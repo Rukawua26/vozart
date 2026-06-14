@@ -1,5 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
-import { Sparkles } from 'lucide-react';
+import { useState, useEffect, lazy, Suspense, useCallback, useRef } from 'react';
+import { Sparkles, Download } from 'lucide-react';
 import { cn } from './lib/utils';
 
 const CanvasInclusivo = lazy(() => import('./components/CanvasInclusivo').then(m => ({ default: m.CanvasInclusivo })));
@@ -11,65 +11,97 @@ interface ProviderInfo {
   models: string[];
 }
 
+type ServerMode = "connecting" | "connected" | "local";
+
 export default function App() {
   const [commands, setCommands] = useState<any[]>([]);
   const [ws, setWs] = useState<WebSocket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [mode, setMode] = useState<ServerMode>("connecting");
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [selectedProvider, setSelectedProvider] = useState('gemini');
+  const canvasApiRef = useRef<{ exportPNG: () => void } | null>(null);
+  const reconnectRef = useRef(0);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const connectWS = useCallback(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(`${protocol}//${window.location.host}`);
+
+    socket.onopen = () => {
+      setMode("connected");
+      reconnectRef.current = 0;
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'AI_ACTION' || message.type === 'ERROR') {
+          setCommands((prev) => [...prev, message]);
+        }
+      } catch {}
+    };
+
+    socket.onclose = () => {
+      setMode("local");
+      wsRef.current = null;
+      const delay = Math.min(1000 * Math.pow(2, reconnectRef.current), 30000);
+      reconnectRef.current++;
+      setTimeout(connectWS, delay);
+    };
+
+    socket.onerror = () => socket.close();
+    wsRef.current = socket;
+    setWs(socket);
+  }, []);
 
   useEffect(() => {
     fetch('/api/providers')
       .then(r => r.json())
-      .then(setProviders)
-      .catch(() => {});
-  }, []);
+      .then((data) => {
+        setProviders(data);
+        connectWS();
+      })
+      .catch(() => {
+        setMode("local");
+      });
+  }, [connectWS]);
 
-  useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}`);
-    socket.onopen = () => setIsConnected(true);
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'AI_ACTION' || message.type === 'ERROR') {
-        setCommands((prev) => [...prev, message]);
-      }
-    };
-    socket.onclose = () => setIsConnected(false);
-    setWs(socket);
-    return () => socket.close();
-  }, []);
-
-  const handleSendCommand = (text: string) => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'VOICE_COMMAND', text, provider: selectedProvider }));
+  const handleSendCommand = useCallback((text: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'VOICE_COMMAND', text, provider: selectedProvider }));
+    } else {
+      setCommands((prev) => [...prev, { type: 'ERROR', data: { action: 'ERROR', message: 'Sin conexión al servidor. Modo local.' } }]);
     }
-  };
+  }, [selectedProvider]);
 
   const currentProvider = providers.find(p => p.name === selectedProvider);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 font-sans overflow-hidden">
-      <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50">
+    <div className="flex flex-col h-screen bg-slate-950 font-sans overflow-hidden select-none">
+      <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-emerald-400 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-emerald-400 rounded-xl flex items-center justify-center shadow-lg shrink-0">
             <Sparkles size={20} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Voz<span className="text-emerald-400">Art</span></h1>
+          <h1 className="text-xl font-black text-white tracking-tight hidden sm:block">
+            Voz<span className="text-emerald-400">Art</span>
+          </h1>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
-            <button className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm font-bold shadow-sm">Diseño</button>
-            <button className="px-4 py-1.5 text-slate-400 text-sm font-bold hover:text-white transition-colors">Exportar</button>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-orange-500 border-2 border-white flex items-center justify-center text-white font-bold text-sm">JS</div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => canvasApiRef.current?.exportPNG()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors"
+          >
+            <Download size={14} />
+            <span className="hidden sm:inline">Exportar</span>
+          </button>
         </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden">
         <Suspense fallback={<div className="flex-1 flex items-center justify-center text-slate-600 text-sm">Cargando lienzo...</div>}>
-          <CanvasInclusivo commands={commands} />
+          <CanvasInclusivo commands={commands} canvasApiRef={canvasApiRef} />
         </Suspense>
 
         <Suspense fallback={<div className="w-72 bg-slate-900 border-l border-slate-800 flex items-center justify-center text-slate-600 text-sm">Cargando...</div>}>
@@ -83,17 +115,17 @@ export default function App() {
         </Suspense>
       </main>
 
-      <footer className="h-12 bg-slate-900 border-t border-slate-800 px-6 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] shrink-0">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", isConnected ? "bg-emerald-400" : "bg-red-500 animate-pulse")} /> 
-            WebSocket: {isConnected ? 'Conectado' : 'Desconectado'}
+      <footer className="h-10 bg-slate-900 border-t border-slate-800 px-4 flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <div className={cn("w-1.5 h-1.5 rounded-full", mode === "connected" ? "bg-emerald-400" : mode === "connecting" ? "bg-yellow-400 animate-pulse" : "bg-slate-600")} />
+            {mode === "connected" ? "Conectado" : mode === "connecting" ? "Conectando..." : "Local"}
           </span>
-          <span>IA: {currentProvider?.displayName || selectedProvider}</span>
+          {mode === "connected" && (
+            <span className="text-slate-600">{currentProvider?.displayName || selectedProvider}</span>
+          )}
         </div>
-        <div className="hidden md:flex gap-6">
-          <span>v1.0</span>
-        </div>
+        <span className="text-slate-600">v1.0</span>
       </footer>
     </div>
   );

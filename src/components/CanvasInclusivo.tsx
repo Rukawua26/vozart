@@ -1,19 +1,71 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, MutableRefObject } from 'react';
 import * as fabric from 'fabric';
-import { Pencil, Square, Circle, Triangle, Trash2, Layers } from 'lucide-react';
+import { Pencil, Square, Circle, Triangle, Trash2, Undo2, Redo2, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+interface CanvasApi {
+  exportPNG: () => void;
+}
 
 interface CanvasProps {
   onActionExecute?: (action: any) => void;
   commands: any[];
+  canvasApiRef: MutableRefObject<CanvasApi | null>;
 }
 
-export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands }) => {
+const MAX_HISTORY = 50;
+
+export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [activeTool, setActiveTool] = useState<'pencil' | 'rect' | 'circle' | 'triangle'>('pencil');
   const [color, setColor] = useState('#3B82F6');
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(-1);
+
+  const saveState = useCallback((c: fabric.Canvas) => {
+    const json = JSON.stringify(c.toJSON());
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    historyRef.current.push(json);
+    if (historyRef.current.length > MAX_HISTORY) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(false);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (!fabricCanvas || historyIndexRef.current <= 0) return;
+    historyIndexRef.current--;
+    const state = JSON.parse(historyRef.current[historyIndexRef.current]);
+    fabricCanvas.loadFromJSON(state).then(() => fabricCanvas.renderAll());
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(true);
+  }, [fabricCanvas]);
+
+  const redo = useCallback(() => {
+    if (!fabricCanvas || historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current++;
+    const state = JSON.parse(historyRef.current[historyIndexRef.current]);
+    fabricCanvas.loadFromJSON(state).then(() => fabricCanvas.renderAll());
+    setCanUndo(true);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, [fabricCanvas]);
+
+  const exportPNG = useCallback(() => {
+    if (!fabricCanvas) return;
+    const dataURL = fabricCanvas.toDataURL({ format: 'png', multiplier: 2 });
+    const link = document.createElement('a');
+    link.download = `vozart-${Date.now()}.png`;
+    link.href = dataURL;
+    link.click();
+  }, [fabricCanvas]);
+
+  useEffect(() => {
+    if (canvasApiRef) canvasApiRef.current = { exportPNG };
+  }, [canvasApiRef, exportPNG]);
 
   const resizeCanvas = useCallback((c: fabric.Canvas) => {
     if (!containerRef.current) return;
@@ -39,8 +91,55 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands }) => {
     c.freeDrawingBrush.color = color;
     c.freeDrawingBrush.width = 5;
 
+    c.on('object:added', () => saveState(c));
+    c.on('object:modified', () => saveState(c));
+    c.on('path:created', () => saveState(c));
+
+    c.on('mouse:wheel', (opt) => {
+      const ev = opt.e as WheelEvent;
+      const delta = ev.deltaY;
+      let zoom = c.getZoom();
+      zoom *= 0.999 ** delta;
+      if (zoom > 20) zoom = 20;
+      if (zoom < 0.1) zoom = 0.1;
+      const pt = new fabric.Point(ev.offsetX, ev.offsetY);
+      c.zoomToPoint(pt, zoom);
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+
+    let isPanning = false;
+    let lastPos = { x: 0, y: 0 };
+
+    c.on('mouse:down', (opt) => {
+      const ev = opt.e as MouseEvent;
+      if (ev.altKey) {
+        isPanning = true;
+        lastPos = { x: ev.clientX, y: ev.clientY };
+        c.selection = false;
+      }
+    });
+
+    c.on('mouse:move', (opt) => {
+      if (isPanning) {
+        const ev = opt.e as MouseEvent;
+        const vpt = c.viewportTransform!;
+        vpt[4] += ev.clientX - lastPos.x;
+        vpt[5] += ev.clientY - lastPos.y;
+        c.requestRenderAll();
+        lastPos = { x: ev.clientX, y: ev.clientY };
+      }
+    });
+
+    c.on('mouse:up', () => {
+      isPanning = false;
+      c.selection = true;
+    });
+
     const ro = new ResizeObserver(() => resizeCanvas(c));
     ro.observe(containerRef.current);
+
+    saveState(c);
 
     setFabricCanvas(c);
     return () => {
@@ -60,7 +159,8 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands }) => {
     fabricCanvas.clear();
     fabricCanvas.set({ backgroundColor: '#ffffff' });
     fabricCanvas.renderAll();
-  }, [fabricCanvas]);
+    saveState(fabricCanvas);
+  }, [fabricCanvas, saveState]);
 
   useEffect(() => {
     if (!fabricCanvas || commands.length === 0) return;
@@ -124,7 +224,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands }) => {
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      <aside className="w-20 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-6 gap-6 shrink-0">
+      <aside className="w-20 bg-slate-900 border-r border-slate-800 flex flex-col items-center py-6 gap-3 shrink-0">
         <button
           onClick={() => toggleDrawing('pencil')}
           className={cn(
@@ -167,48 +267,46 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands }) => {
 
         <div className="w-10 h-0.5 bg-slate-800 rounded-full my-2" />
 
-        <div className="flex flex-col gap-3 mt-auto mb-4">
-          <button onClick={() => setColor('#EF4444')} className={cn("w-8 h-8 rounded-full bg-red-500 cursor-pointer border-2 transition-all", color === '#EF4444' ? "border-white scale-110 shadow-lg" : "border-transparent opacity-60")} />
-          <button onClick={() => setColor('#10B981')} className={cn("w-8 h-8 rounded-full bg-emerald-500 cursor-pointer border-2 transition-all", color === '#10B981' ? "border-white scale-110 shadow-lg" : "border-transparent opacity-60")} />
-          <button onClick={() => setColor('#FBBF24')} className={cn("w-8 h-8 rounded-full bg-yellow-400 cursor-pointer border-2 transition-all", color === '#FBBF24' ? "border-white scale-110 shadow-lg" : "border-transparent opacity-60")} />
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="w-8 h-8 rounded-full cursor-pointer bg-transparent border-none overflow-hidden"
-          />
-        </div>
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md", canUndo ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-900 text-slate-700 cursor-not-allowed")}
+        >
+          <Undo2 size={18} />
+        </button>
+
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md", canRedo ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-900 text-slate-700 cursor-not-allowed")}
+        >
+          <Redo2 size={18} />
+        </button>
+
+        <button
+          onClick={exportPNG}
+          className="w-12 h-12 rounded-2xl bg-slate-800 text-emerald-400 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition-all shadow-md"
+        >
+          <Download size={18} />
+        </button>
 
         <button
           onClick={handleClear}
-          className="w-12 h-12 bg-slate-800 text-red-400 hover:bg-red-500 hover:text-white rounded-2xl flex items-center justify-center transition-all shadow-sm"
+          className="w-12 h-12 rounded-2xl bg-slate-800 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm mt-auto"
         >
           <Trash2 size={20} />
         </button>
       </aside>
 
-      <section className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center p-8 overflow-hidden">
-        <div className="w-full max-w-4xl bg-slate-900 rounded-[2.5rem] p-3 border border-slate-800 shadow-2xl relative">
-          <div className="absolute top-8 left-8 flex gap-2 z-10">
-            <span className="px-3 py-1 bg-black/40 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-widest border border-white/10">Base IA</span>
-            <span className="px-3 py-1 bg-blue-500/80 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-widest">Manual</span>
-          </div>
-
-          <div ref={containerRef} className="canvas-outline rounded-[2rem] overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+      <section className="flex-1 bg-slate-950 relative flex flex-col items-center justify-center overflow-hidden">
+        <div className="flex-1 w-full p-2">
+          <div ref={containerRef} className="w-full h-full bg-white rounded-2xl overflow-hidden border border-slate-800">
             <canvas ref={canvasRef} />
           </div>
         </div>
 
-        <div className="absolute left-12 bottom-12 hidden 2xl:flex flex-col gap-2 scale-90">
-             <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl flex items-center gap-4 w-48 shadow-xl">
-                <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400">
-                  <Layers size={16} />
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-500">Guardado</p>
-                  <p className="text-xs font-semibold text-white">Versión 1.0</p>
-                </div>
-             </div>
+        <div className="absolute bottom-4 left-4 flex gap-2">
+          <span className="px-2 py-0.5 bg-black/50 backdrop-blur rounded text-[9px] font-bold text-white/60">Rueda: zoom · Alt+arrastre: pan</span>
         </div>
       </section>
     </div>

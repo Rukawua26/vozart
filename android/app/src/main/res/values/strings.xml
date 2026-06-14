@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VozArt</string>
+    <string name="title_activity_main">VozArt</string>
+    <string name="package_name">com.vozart.app</string>
+    <string name="custom_url_scheme">com.vozart.app</string>
+</resources>
