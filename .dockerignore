@@ -1,0 +1,11 @@
+node_modules
+.git
+*.md
+.env*
+!.env.example
+src
+tsconfig.json
+vite.config.ts
+server.ts
+server/
+out.js

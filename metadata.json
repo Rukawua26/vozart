@@ -1,0 +1,6 @@
+{
+  "name": "VozArt",
+  "description": "Lienzo digital interactivo impulsado por IA y comandos de voz.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
