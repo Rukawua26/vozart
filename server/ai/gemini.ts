@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT } from "./types.js";
+import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT, parseAIResponse } from "./types.js";
 
 export class GeminiProvider implements AIProvider {
   readonly name = "gemini";
@@ -32,10 +32,6 @@ export class GeminiProvider implements AIProvider {
       return { action: "ERROR", message: "Gemini no devolvió respuesta" };
     }
 
-    try {
-      return JSON.parse(responseText.trim());
-    } catch {
-      return { action: "ERROR", message: "Gemini generó una respuesta inválida" };
-    }
+    return parseAIResponse(responseText, "Gemini");
   }
 }

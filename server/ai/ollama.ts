@@ -1,4 +1,4 @@
-import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT } from "./types.js";
+import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT, parseAIResponse } from "./types.js";
 
 export class OllamaProvider implements AIProvider {
   readonly name = "ollama";
@@ -35,11 +35,7 @@ export class OllamaProvider implements AIProvider {
         return { action: "ERROR", message: "Ollama no devolvió respuesta" };
       }
 
-      try {
-        return JSON.parse(content.trim());
-      } catch {
-        return { action: "ERROR", message: "Ollama generó una respuesta inválida" };
-      }
+      return parseAIResponse(content, "Ollama");
     } catch (err: any) {
       return { action: "ERROR", message: `No se pudo conectar a Ollama: ${err.message}` };
     }

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Send, MessageSquare, Layers, Eye, Cpu } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Mic, MicOff, Send, MessageSquare, Layers, Eye, Cpu, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import type { AppCommand } from '../types';
 
 interface ProviderInfo {
   name: string;
@@ -11,18 +12,19 @@ interface ProviderInfo {
 
 interface VoiceControlProps {
   onSendCommand: (text: string) => void;
-  commands: any[];
+  commands: AppCommand[];
   providers: ProviderInfo[];
   selectedProvider: string;
   onProviderChange: (name: string) => void;
+  onClose?: () => void;
 }
 
-export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, commands, providers, selectedProvider, onProviderChange }) => {
+export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, commands, providers, selectedProvider, onProviderChange, onClose }) => {
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
   const [inputText, setInputText] = useState('');
   const [speechUnsupported, setSpeechUnsupported] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef('');
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -30,38 +32,39 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
       setSpeechUnsupported(true);
       return;
     }
-    recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.continuous = false;
-    recognitionRef.current.interimResults = true;
-    recognitionRef.current.lang = 'es-ES';
 
-    recognitionRef.current.onresult = (event: any) => {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'es-ES';
+
+    recognition.onresult = (event: any) => {
       const current = event.resultIndex;
-      const transcriptText = event.results[current][0].transcript;
-      setTranscript(transcriptText);
+      transcriptRef.current = event.results[current][0].transcript;
     };
 
-    recognitionRef.current.onend = () => {
+    recognition.onend = () => {
       setIsListening(false);
-      if (transcript) {
-        onSendCommand(transcript);
-        setTranscript('');
+      if (transcriptRef.current) {
+        onSendCommand(transcriptRef.current);
+        transcriptRef.current = '';
       }
     };
 
-    recognitionRef.current.onerror = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
 
-    return () => {
-      if (recognitionRef.current) recognitionRef.current.stop();
-    };
-  }, [transcript, onSendCommand]);
+    recognitionRef.current = recognition;
+    return () => recognition.stop();
+  }, [onSendCommand]);
 
   const toggleListening = () => {
+    const r = recognitionRef.current;
+    if (!r) return;
     if (isListening) {
-      recognitionRef.current?.stop();
+      r.stop();
     } else {
-      setTranscript('');
-      recognitionRef.current?.start();
+      transcriptRef.current = '';
+      r.start();
       setIsListening(true);
     }
   };
@@ -74,15 +77,19 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
     }
   };
 
-  // Filtrar solo los comandos de voz enviados por el usuario para el historial
-  // (En este caso usaremos los mensajes 'AI_ACTION' para mostrar qué se procesó)
-  const history = commands.filter(c => c.type === 'AI_ACTION').slice(-3).reverse();
+  const history = commands.filter((c): c is Extract<AppCommand, { type: 'AI_ACTION' }> => c.type === 'AI_ACTION').slice(-3).reverse();
 
   return (
-    <aside className="w-72 bg-slate-900 border-l border-slate-800 flex flex-col p-6 shrink-0 h-full overflow-y-auto">
-      <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Control Voz IA</h3>
+    <aside className="w-72 md:w-80 bg-slate-900 border-l border-slate-800 flex flex-col p-4 md:p-6 shrink-0 h-full overflow-y-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Control Voz IA</h3>
+        {onClose && (
+          <button onClick={onClose} className="md:hidden w-7 h-7 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 transition-colors" aria-label="Cerrar">
+            <X size={14} />
+          </button>
+        )}
+      </div>
 
-      {/* Selector de Proveedor */}
       <div className="mb-4 p-3 bg-slate-950/50 rounded-xl border border-slate-800">
         <div className="flex items-center gap-2 mb-2">
           <Cpu size={12} className="text-slate-500" />
@@ -98,8 +105,7 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
           ))}
         </select>
       </div>
-      
-        {/* Botón de Micrófono Principal */}
+
       <div className="flex flex-col items-center gap-4 py-6 bg-slate-950/50 rounded-2xl border border-slate-800 mb-6">
         {speechUnsupported ? (
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center opacity-50">
@@ -131,7 +137,6 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
         )}
       </div>
 
-      {/* Historial de Comandos */}
       <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Historial</h3>
       <div className="flex flex-col gap-3 flex-1">
         <AnimatePresence initial={false}>
@@ -155,7 +160,6 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
         </AnimatePresence>
       </div>
 
-      {/* Entrada Manual */}
       <form onSubmit={handleManualSend} className="relative my-6">
         <div className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800 focus-within:border-blue-500/50 transition-all">
           <MessageSquare size={14} className="ml-2 text-slate-600" />
@@ -175,11 +179,10 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
         </div>
       </form>
 
-      {/* Gestión de Capas */}
       <div className="mt-auto">
         <div className="flex items-center justify-between mb-4">
-           <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Capas</h3>
-           <Layers size={14} className="text-slate-600" />
+          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Capas</h3>
+          <Layers size={14} className="text-slate-600" />
         </div>
         <div className="space-y-2">
           <div className="flex items-center gap-3 p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/30">

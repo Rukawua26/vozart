@@ -9,6 +9,10 @@ import pino from "pino";
 import dotenv from "dotenv";
 import { getProvider, listProviders } from "./server/ai/registry.js";
 
+interface AliveWebSocket extends WebSocket {
+  isAlive?: boolean;
+}
+
 dotenv.config();
 
 const logger = pino({
@@ -62,9 +66,41 @@ async function startServer() {
   const wss = new WebSocketServer({ server });
   const wsRateLimit = new Map<string, number[]>();
 
-  wss.on("connection", (ws: WebSocket) => {
-    const clientIp = (ws as any)._socket?.remoteAddress || "unknown";
+  const cleanupRateLimit = setInterval(() => {
+    const cutoff = Date.now() - 60_000;
+    for (const [ip, timestamps] of wsRateLimit) {
+      const filtered = timestamps.filter(t => t > cutoff);
+      if (filtered.length === 0) wsRateLimit.delete(ip);
+      else wsRateLimit.set(ip, filtered);
+    }
+  }, 60_000);
+
+  const heartbeat = setInterval(() => {
+    wss.clients.forEach((client) => {
+      const ws = client as AliveWebSocket;
+      if (ws.isAlive === false) {
+        ws.terminate();
+        return;
+      }
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30_000);
+
+  wss.on("close", () => {
+    clearInterval(cleanupRateLimit);
+    clearInterval(heartbeat);
+  });
+
+  wss.on("connection", (ws: WebSocket, req) => {
+    const aliveWs = ws as AliveWebSocket;
+    aliveWs.isAlive = true;
+    const clientIp = req.socket.remoteAddress || "unknown";
     logger.info({ clientIp }, "Cliente conectado");
+
+    ws.on("pong", () => {
+      aliveWs.isAlive = true;
+    });
 
     ws.on("message", async (data) => {
       const now = Date.now();

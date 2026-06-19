@@ -34,3 +34,11 @@ Reglas:
 2. Si no entiendes, devuelve {"action": "ERROR", "message": "No entendí el comando"}.
 3. Usa colores en formato hexadecimal.
 4. Si piden dibujar algo complejo, usa GENERATE_IMAGE con un buen prompt detallado.`;
+
+export function parseAIResponse(text: string, provider: string): AIAction {
+  try {
+    return JSON.parse(text.trim());
+  } catch {
+    return { action: "ERROR", message: `${provider} generó una respuesta inválida` };
+  }
+}

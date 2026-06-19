@@ -1,6 +1,6 @@
 {
-  "name": "VozArt",
-  "short_name": "VozArt",
+  "name": "VozArt Dev",
+  "short_name": "VozArt Dev",
   "description": "Lienzo digital interactivo con control por voz e IA",
   "start_url": "/",
   "display": "standalone",

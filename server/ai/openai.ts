@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT } from "./types.js";
+import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT, parseAIResponse } from "./types.js";
 
 export class OpenAIProvider implements AIProvider {
   readonly name = "openai";
@@ -33,10 +33,6 @@ export class OpenAIProvider implements AIProvider {
       return { action: "ERROR", message: "OpenAI no devolvió respuesta" };
     }
 
-    try {
-      return JSON.parse(content.trim());
-    } catch {
-      return { action: "ERROR", message: "OpenAI generó una respuesta inválida" };
-    }
+    return parseAIResponse(content, "OpenAI");
   }
 }
