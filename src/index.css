@@ -23,6 +23,6 @@
 
   body {
     @apply bg-slate-950 text-slate-50 antialiased overflow-hidden fixed inset-0;
-    touch-action: none;
+    touch-action: manipulation;
   }
 }

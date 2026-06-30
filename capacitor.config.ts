@@ -1,16 +1,18 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const config: CapacitorConfig = {
   appId: 'com.vozartdev.app',
-  appName: 'VozArt Dev',
+  appName: 'VozArt QA',
   webDir: 'dist',
   android: {
-    allowMixedContent: true,
+    allowMixedContent: !isProd,
     captureInput: true,
-    webContentsDebuggingEnabled: false,
+    webContentsDebuggingEnabled: !isProd,
     overrideUserAgent: 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36',
     backgroundColor: '#0F172A',
-    loggingBehavior: 'debug',
+    loggingBehavior: isProd ? 'none' : 'debug',
   },
   plugins: {
     SplashScreen: {

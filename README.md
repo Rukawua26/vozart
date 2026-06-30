@@ -1,213 +1,174 @@
-<div align="center">
+# VozArt
 
-# 🎨 VozArt
+VozArt es una app de dibujo asistido por IA con control por voz en espanol, canvas accesible sobre Fabric.js, proyectos locales y build Android lista para pruebas.
 
-### *Lienzo digital interactivo con control por voz e inteligencia artificial*
+## Por Que Llama La Atencion
 
-> Habla. El lienzo obedece. Dibuja formas, cambia colores, genera imágenes con IA y más — todo con tu voz.
+- Voz + texto: dicta comandos en espanol o escribe manualmente.
+- IA multi-provider: Gemini, OpenAI, Anthropic y Ollama.
+- Canvas potente: formas, texto, imagen, capas, snapping, blend modes, zoom/pan y exportacion.
+- Pinceles avanzados: oleo, acuarela, carbon, spray y difuminar.
+- Story mode: la IA puede construir escenas visuales secuenciales.
+- Accesibilidad real: alto contraste, lectura facil, UI grande, menos motion, atajos y anuncios `aria-live`.
+- Android: APK via Capacitor para validar la experiencia en movil.
 
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=for-the-badge)]()
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white&style=for-the-badge)]()
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white&style=for-the-badge)]()
-[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white&style=for-the-badge)]()
-[![Fabric.js](https://img.shields.io/badge/Fabric.js-7-1C1C1C?logoColor=white&style=for-the-badge)]()
-[![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white&style=for-the-badge)]()
-[![Android](https://img.shields.io/badge/Android_Capacitor-8-3DDC84?logo=android&logoColor=white&style=for-the-badge)]()
-[![Docker](https://img.shields.io/badge/Docker-Node_22-2496ED?logo=docker&logoColor=white&style=for-the-badge)]()
+## Highlights
 
-[![Tests](https://img.shields.io/badge/Tests-22_passed-22c55e?style=flat-square)]()
-[![Lint](https://img.shields.io/badge/Lint-tsc_clean-22c55e?style=flat-square)]()
-[![Build](https://img.shields.io/badge/Build-OK-22c55e?style=flat-square)]()
+| Area | Incluye |
+| --- | --- |
+| Entrada | Voz, texto manual, WebSocket en tiempo real |
+| IA | `AI_ACTION`, fallback entre providers, contexto de sesion |
+| Dibujo | Formas, texto, importacion de imagen, referencia, export PNG/JPG/SVG/JSON |
+| Capas | Visibilidad, bloqueo, opacidad y reordenamiento |
+| Productividad | Undo/redo, grid, lupa, zoom, pan, autosave |
+| Accesibilidad | Navegacion por teclado, lector de pantalla, perfiles de uso |
+| Android | Build release APK y configuracion Capacitor |
 
-</div>
+## Demo Rapida
 
----
+Comandos que VozArt entiende bien:
 
-## ✨ ¿Qué es VozArt?
+- `dibuja un circulo azul grande`
+- `pon el fondo en negro`
+- `anade texto que diga Hola Mundo`
+- `genera una imagen de bosque magico`
+- `refina el objeto seleccionado`
+- `cuenta una historia visual sobre un viaje espacial`
 
-**VozArt** es una aplicación web interactiva que te permite controlar un lienzo de dibujo digital usando **comandos de voz en español**. Habla y el lienzo obedece al instante.
+## Stack
 
-| Característica | Descripción |
-|---|---|
-| 🎤 **Control por voz** | Dicta comandos en español, el canvas responde en tiempo real |
-| 🤖 **4 proveedores IA** | Gemini, OpenAI, Anthropic y Ollama local — tú eliges |
-| 🎨 **Canvas interactivo** | Formas, colores, fondos e imágenes generadas por IA |
-| 📱 **APK Android** | Compila como app nativa vía Capacitor 8 |
-| ⚡ **WebSocket tiempo real** | Sin esperas, sin recargas |
-| 🌐 **PWA** | Service worker para carga rápida |
+- Frontend: React 19, Vite, TypeScript, Fabric.js, Tailwind
+- Backend: Express, WebSocket, TypeScript
+- IA: Gemini, OpenAI, Anthropic, Ollama
+- Mobile: Capacitor Android
+- Testing: Vitest
 
----
+## Estado
 
-## 🚀 Inicio Rápido
+El alcance original del producto esta implementado al 100%.
+
+- Pinceles realistas + stylus
+- Modos de fusion
+- Story mode
+- Smudge tool
+- Snapping
+- Modo auto/manual para acciones IA
+- Proyectos locales con import/export y URL compartible
+- APK Android de prueba
+
+## Arranque Local
 
 ```bash
-# 1. Clonar e instalar
-git clone https://github.com/Rukawua26/vozart.git
-cd vozart
 npm install
-
-# 2. Configurar API keys
 cp .env.example .env
-# Edita .env con al menos una API key de IA
-
-# 3. ¡A dibujar!
-npm run dev    # Abre http://localhost:3000
+npm run dev
 ```
 
----
+Abre `http://localhost:3000`.
 
-## 🎮 Cómo Usar
+## Variables De Entorno
 
-1. Abre `http://localhost:3000`
-2. Selecciona un proveedor IA en la barra lateral derecha
-3. Habla o escribe comandos como:
-
-| Comando | Ejemplo | Resultado |
-|---|---|---|
-| Dibujar forma | *"dibuja un círculo rojo grande"* | Círculo rojo en el canvas |
-| Cambiar fondo | *"fondo azul oscuro"* | Fondo cambia a #0F172A |
-| Generar imagen | *"genera un paisaje con montañas"* | IA genera la imagen |
-| Limpiar canvas | *"limpia el lienzo"* | Se borra todo |
-| Exportar | *"exporta el dibujo"* | Descarga PNG |
-
----
-
-## 🤖 Proveedores IA
-
-Cambia de proveedor al instante desde la barra lateral — sin reiniciar el servidor.
-
-| Proveedor | Modelos destacados | Variable de entorno |
-|---|---|---|
-| **Gemini** | `gemini-2.0-flash`, `gemini-2.0-pro` | `GEMINI_API_KEY` |
-| **OpenAI** | `GPT-4o`, `GPT-4o-mini` | `OPENAI_API_KEY` |
-| **Anthropic** | `Claude Sonnet 4`, `Claude Haiku` | `ANTHROPIC_API_KEY` |
-| **Ollama** | Modelos locales (`Llama 3`, `Mistral`) | `OLLAMA_URL` |
-
-Todos implementan la misma interfaz `AIProvider` y se registran en `server/ai/registry.ts`. Si un proveedor falla, el sistema intenta con el siguiente automáticamente.
-
----
-
-## 🏗️ Arquitectura
-
-```
-App React (Canvas + Voz)
-    │
-    ├── WebSocket ──▶ Express 4 + ws
-    │                       │
-    │                       └── AI Registry
-    │                           ├── Gemini
-    │                           ├── OpenAI
-    │                           ├── Anthropic
-    │                           └── Ollama
-    │
-    └── localStorage ──▶ CanvasInclusivo (Fabric.js 7)
+```bash
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+OLLAMA_URL=http://localhost:11434
+APP_ACCESS_TOKEN=
+VITE_APP_ACCESS_TOKEN=
+AI_PROVIDER_TIMEOUT_MS=15000
+APP_URL=http://localhost:3000
+TRUST_PROXY=
+DISABLE_HMR=true
 ```
 
-### Flujo de un comando
+## Scripts
 
-1. 🎤 Hablas o escribes un comando en `VoiceControl.tsx`
-2. 📡 Se envía por WebSocket: `{ type: "VOICE_COMMAND", text, provider }`
-3. 🧠 El servidor selecciona el proveedor y procesa el texto
-4. 🎨 `CanvasInclusivo.tsx` aplica la acción al canvas
-5. 📋 El resultado aparece en el historial con timestamp
+```bash
+npm run dev
+npm run build
+npm start
+npm run lint
+npm test
+npm run apk
+```
 
----
+## Arquitectura
 
-## 📱 Android APK
+- `server.ts`
+  Backend real en dev/prod. Expone `/health`, `/api/providers`, WebSocket y fallback entre providers.
+- `server/ai/`
+  Registro de providers, validacion y parseo de respuestas IA.
+- `src/App.tsx`
+  Estado global, providers, proyectos, autosave, colaboracion y WebSocket.
+- `src/components/CanvasInclusivo.tsx`
+  Lienzo Fabric.js, herramientas, pinceles, accesibilidad y persistencia.
+- `src/components/VoiceControl.tsx`
+  Voz, historial, proveedores, proyectos y controles laterales.
+- `src/services/`
+  Contexto de sesion IA, stream manager y presets de perfil.
 
-VozArt funciona como app nativa en Android vía **Capacitor 8**:
+## Flujo De Voz A Canvas
+
+1. El usuario habla o escribe un comando.
+2. `VoiceControl` lo manda a `App.tsx`.
+3. `App.tsx` envia el payload por WebSocket con provider y contexto.
+4. `server.ts` valida la entrada y consulta al provider.
+5. El provider responde con `AI_ACTION` o `ERROR`.
+6. `CanvasInclusivo` ejecuta la accion y guarda el estado.
+
+## Android
+
+- Identidad dev actual: `com.vozartdev.app`
+- Nombre visible actual de prueba: `VozArt QA`
+- Build release:
 
 ```bash
 npm run apk
-# Genera VozArt-Dev-v1.4.0.apk
 ```
 
-La app mantiene la identidad `com.vozartdev.app` para desarrollo. Incluye permisos de micrófono y está configurada en modo retrato.
-
----
-
-## 🐳 Docker
+- Para probar contra servidor en red local:
 
 ```bash
-docker build -t vozart .
-docker run -p 3000:3000 --env-file .env vozart
+VITE_SERVER_URL=http://<tu-ip>:3000
 ```
 
----
+## Calidad
 
-## ✅ Tests y Calidad
+Checklist tecnico base:
 
-| Check | Comando | Estado |
-|---|---|---|
-| Tests unitarios | `npm test` | ✅ 22 tests passed |
-| TypeScript | `npm run lint` | ✅ Sin errores |
-| Build producción | `npm run build` | ✅ Build exitoso |
-
-### Tests del contrato IA
-
-El test suite de `parseAIResponse` cubre:
-
-- **Acciones válidas**: `ADD_SHAPE`, `CHANGE_BG`, `CLEAR_CANVAS`, `GENERATE_IMAGE`, `ERROR`
-- **Sanitización**: Límite de 1000 caracteres, caracteres de control, tipos nulos
-- **Casos borde**: JSON con espacios, size negativo/excesivo, shape no soportado, prompt vacío
-
----
-
-## 📁 Estructura del Proyecto
-
-```
-vozart/
-├── server.ts                    # Express + WebSocket (entrypoint)
-├── vite.config.ts               # Vite + Tailwind + chunk splitting
-├── server/ai/
-│   ├── types.ts                 # AIActionSchema, parseAIResponse, sanitizeInput
-│   ├── registry.ts              # Registro de proveedores IA
-│   ├── gemini.ts / openai.ts    # Implementaciones de cada proveedor
-│   ├── anthropic.ts / ollama.ts
-├── src/
-│   ├── App.tsx                  # WebSocket, estado global, comandos
-│   ├── components/
-│   │   ├── CanvasInclusivo.tsx   # Canvas Fabric.js 7
-│   │   └── VoiceControl.tsx     # Voz, historial, selector de proveedor
-│   └── types.ts                 # Tipos compartidos frontend
-├── tests/ai/
-│   └── parseAIResponse.test.ts  # Tests del contrato IA
-├── android/                     # Proyecto Capacitor Android
-├── public/                      # Service worker + assets
-└── dist/                        # Build de producción
+```bash
+npm run lint
+npm test
+npm run build
 ```
 
----
+CI:
 
-## 🔧 Variables de Entorno
+- `.github/workflows/ci.yml`
+- Ejecuta install, lint, test y build
 
-| Variable | ¿Obligatoria? | Descripción |
-|---|---|---|
-| `GEMINI_API_KEY` | Para Gemini | API key de Google AI |
-| `OPENAI_API_KEY` | Para OpenAI | API key de OpenAI |
-| `ANTHROPIC_API_KEY` | Para Anthropic | API key de Anthropic |
-| `OLLAMA_URL` | Para Ollama | URL de Ollama local |
-| `APP_ACCESS_TOKEN` | Opcional | Token de acceso a endpoints |
-| `PORT` | No | Puerto del servidor (default: 3000) |
-| `LOG_LEVEL` | No | Nivel de logging (default: info) |
-| `DISABLE_HMR` | No | Desactiva HMR para edición por IA |
-| `TRUST_PROXY` | No | Detrás de proxy inverso |
+## Limitaciones Actuales
 
----
+Las limitaciones reales del MVP estan documentadas en:
 
-## 🤝 Contribuir
+- `spec/limitations-mvp.md`
 
-1. Haz un fork del repositorio
-2. Crea una rama: `git checkout -b feature/nueva-mejora`
-3. Asegúrate de que `npm test` y `npm run lint` pasen
-4. Abre un Pull Request
+## Documentacion Del Proyecto
 
----
+- `spec/roadmap-fases-vozart.md`
+- `spec/qa-checklist.md`
+- `spec/constitution/tech-stack.md`
+- `spec/constitution/mission.md`
 
-<div align="center">
+## Roadmap Posterior
 
-**VozArt** · Hecho con ❤️ y 🎤 · React 19 · Express · Fabric.js 7 · Capacitor 8
+Guardado para la siguiente etapa con VPS/dominio:
 
-*Dibuja con tu voz, donde sea, como sea.*
+- Persistencia en nube
+- Cuentas y sync entre dispositivos
+- Colaboracion en tiempo real mas robusta
+- Accesibilidad profunda y tracking avanzado
 
-</div>
+## Licencia
+
+Proyecto privado de trabajo.
