@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, useCallback, MutableRefObject } from 'react';
 import * as fabric from 'fabric';
-import { Pencil, Square, Circle, Triangle, Trash2, Undo2, Redo2, Download, Move, PenTool, Hexagon, ImageIcon, Blend, Droplets, Brush } from 'lucide-react';
+import { Trash2, Undo2, Redo2, Download, Move, Blend } from 'lucide-react';
 import { cn, withAlpha } from '../lib/utils';
-import type { AccessibilitySettings, AppCommand, Layer, WorkProfile } from '../types';
+import type { AccessibilitySettings, AppCommand, Layer, WorkProfile, AIAction } from '../types';
 import { createCustomBrush, setPointerProps, CustomBrushType } from './customBrushes';
+import { ToolType, BrushType, BlendMode, TOOLS, MAX_HISTORY, MAX_HISTORY_SIZE_BYTES, STORAGE_KEY, COLOR_SWATCHES, BLEND_MODES, profileHint } from '../lib/canvas-constants';
+import { makeShape, makeCanvasBackground, getImagePlacement, downloadFile, LayerAwareObject } from '../lib/canvas-utils';
 
 interface CanvasApi {
   exportPNG: () => void;
@@ -27,57 +29,6 @@ interface CanvasProps {
   profileBrushWidth?: number;
   initialCanvasJson?: string | null;
   onCanvasChange?: (json: string) => void;
-}
-
-const MAX_HISTORY = 50;
-const MAX_HISTORY_SIZE_BYTES = 500_000;
-const STORAGE_KEY = 'vozart-canvas-state';
-
-type ToolType = 'pencil' | 'rect' | 'circle' | 'triangle' | 'curve' | 'polygon';
-
-type BrushType = 'pencil' | 'circle' | 'spray' | 'ink' | 'charcoal' | 'watercolor' | 'oil' | 'charcoal_pro' | 'spray_pro' | 'watercolor_pro' | 'smudge';
-
-type BlendMode = 'source-over' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'difference' | 'color-dodge' | 'darken' | 'lighten';
-
-const TOOLS: { type: ToolType; icon: typeof Pencil; label: string }[] = [
-  { type: 'pencil', icon: Pencil, label: 'Pincel' },
-  { type: 'rect', icon: Square, label: 'Rectángulo' },
-  { type: 'circle', icon: Circle, label: 'Círculo' },
-  { type: 'triangle', icon: Triangle, label: 'Triángulo' },
-  { type: 'curve', icon: PenTool, label: 'Curva' },
-  { type: 'polygon', icon: Hexagon, label: 'Polígono' },
-];
-
-const DEFAULT_SWATCHES = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#111827', '#FFFFFF'];
-const COLOR_SWATCHES = DEFAULT_SWATCHES;
-
-function makeShape(type: ToolType, color: string, size = 120, strokeWidth = 2) {
-  const config = { left: 200, top: 150, fill: color, stroke: '#0F172A', strokeWidth, width: size, height: size };
-  switch (type) {
-    case 'rect': return new fabric.Rect(config);
-    case 'circle': return new fabric.Circle({ ...config, radius: size / 2 });
-    case 'triangle': return new fabric.Triangle(config);
-    case 'curve': {
-      const path = new fabric.Path(`M ${200} ${200} C ${200 + size * 0.5} ${150} ${200 + size * 0.5} ${250} ${200 + size} ${200}`, {
-        left: 150, top: 100, fill: '', stroke: color || '#3B82F6', strokeWidth: strokeWidth + 1,
-      });
-      return path;
-    }
-    case 'polygon': {
-      const sides = 6;
-      const cx = size / 2, cy = size / 2, r = size / 2;
-      const pts = Array.from({ length: sides }, (_, i) => {
-        const a = (Math.PI * 2 * i) / sides - Math.PI / 2;
-        return `${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`;
-      }).join(' L ');
-      const poly = new fabric.Polygon(
-        pts.split(' L ').map(p => { const [x, y] = p.split(' '); return { x: Number(x), y: Number(y) }; }),
-        { left: 150, top: 100, fill: color, stroke: '#0F172A', strokeWidth }
-      );
-      return poly;
-    }
-    default: return null;
-  }
 }
 
 export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef, layers, activeLayerId, accessibility, workProfile, profilePalette, profileShowGrid, profileBrush, profileBrushWidth, initialCanvasJson, onCanvasChange }) => {
@@ -196,14 +147,6 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     link.click();
   }, []);
 
-  const downloadFile = (filename: string, content: string, type: string) => {
-    const link = document.createElement('a');
-    link.download = filename;
-    link.href = URL.createObjectURL(new Blob([content], { type }));
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
-
   const exportJSON = () => {
     const c = fabricCanvasRef.current;
     if (!c) return;
@@ -231,10 +174,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     const reader = new FileReader();
     reader.onload = () => {
       fabric.Image.fromURL(String(reader.result)).then((img) => {
-        const cw = c.width || 512;
-        const ch = c.height || 512;
-        const scale = Math.min(cw * 0.9 / (img.width || cw), ch * 0.9 / (img.height || ch));
-        img.set({ scaleX: scale, scaleY: scale, left: (cw - (img.width || cw) * scale) / 2, top: (ch - (img.height || ch) * scale) / 2, opacity: 0.3, selectable: false, evented: false, name: '_reference_' });
+        img.set({ ...getImagePlacement(c, img, 0.9), opacity: 0.3, selectable: false, evented: false, name: '_reference_' });
         c.add(img);
         c.renderAll();
         setLiveMessage('Imagen de referencia añadida.');
@@ -248,18 +188,6 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     setShowBlendPicker(false);
     setLiveMessage(`Modo fusión: ${mode}`);
   };
-
-  const BLEND_MODES: { value: BlendMode; label: string }[] = [
-    { value: 'source-over', label: 'Normal' },
-    { value: 'multiply', label: 'Multiplicar' },
-    { value: 'screen', label: 'Pantalla' },
-    { value: 'overlay', label: 'Superponer' },
-    { value: 'soft-light', label: 'Luz suave' },
-    { value: 'difference', label: 'Diferencia' },
-    { value: 'color-dodge', label: 'Sobreexponer' },
-    { value: 'darken', label: 'Oscurecer' },
-    { value: 'lighten', label: 'Aclarar' },
-  ];
 
   const resetView = useCallback(() => {
     const c = fabricCanvasRef.current;
@@ -349,10 +277,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     const reader = new FileReader();
     reader.onload = () => {
       fabric.Image.fromURL(String(reader.result)).then((img) => {
-        const cw = c.width || 512;
-        const ch = c.height || 512;
-        const scale = Math.min(cw * 0.8 / (img.width || cw), ch * 0.8 / (img.height || ch));
-        img.set({ scaleX: scale, scaleY: scale, left: (cw - (img.width || cw) * scale) / 2, top: (ch - (img.height || ch) * scale) / 2 });
+        img.set(getImagePlacement(c, img));
         c.add(img);
         c.setActiveObject(img);
         c.renderAll();
@@ -366,9 +291,9 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     const c = fabricCanvasRef.current;
     if (!c) return [];
     return c.getObjects().map((obj) => {
-      const id = (obj as any).name || (obj as any).__uid || '';
+      const id = (obj as LayerAwareObject).name || (obj as LayerAwareObject).__uid || '';
       const type = obj.type || 'unknown';
-      const layer = (obj as any)._layer || 'sin-capa';
+      const layer = (obj as LayerAwareObject)._layer || 'sin-capa';
       return `${type}|${id}|${layer}`;
     });
   }, []);
@@ -412,8 +337,8 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     const c = fabricCanvasRef.current;
     if (!c) return;
     for (const obj of c.getObjects()) {
-      if ((obj as any).name === objectId || (obj as any).__uid === objectId) {
-        (obj as any)._layer = toLayerId;
+      if ((obj as LayerAwareObject).name === objectId || (obj as LayerAwareObject).__uid === objectId) {
+        (obj as LayerAwareObject)._layer = toLayerId;
         break;
       }
     }
@@ -425,9 +350,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     if (!c) return;
     if (!json) {
       c.clear();
-      c.backgroundColor = showGrid
-        ? new fabric.Pattern({ source: makeGridPattern(), repeat: 'repeat' })
-        : backgroundColorRef.current;
+      c.backgroundColor = makeCanvasBackground(showGrid, backgroundColorRef.current);
       c.isDrawingMode = true;
       c.requestRenderAll();
       saveState(c);
@@ -471,7 +394,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
       backgroundColor: '#ffffff',
       isDrawingMode: true,
     });
-    (c as any).enablePointerEvents = true;
+    (c as fabric.Canvas & { enablePointerEvents: boolean }).enablePointerEvents = true;
 
     const trackPointer = (ev: PointerEvent) => {
       setPointerProps(ev.pressure || 0.5, ev.tiltX || 0, ev.tiltY || 0);
@@ -484,7 +407,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     c.freeDrawingBrush.width = brushWidth;
 
     c.on('object:added', (e) => {
-      if (e.target && !(e.target as any)._layer) (e.target as any)._layer = activeLayerRef.current;
+      if (e.target && !(e.target as LayerAwareObject)._layer) (e.target as LayerAwareObject)._layer = activeLayerRef.current;
       saveState(c);
     });
     c.on('object:modified', () => saveState(c));
@@ -723,13 +646,13 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     if (!c) return;
     const layerMap = new Map(layers.map(l => [l.id, l]));
     for (const obj of c.getObjects()) {
-      const layerId = (obj as any)._layer;
+      const layerId = (obj as LayerAwareObject)._layer;
       const layer = layerId ? layerMap.get(layerId) : undefined;
       if (layer) {
         obj.visible = layer.visible;
         const layerOp = layer.opacity ?? 1;
-        const baseOp = (obj as any)._baseOpacity ?? obj.opacity ?? 1;
-        if ((obj as any)._baseOpacity === undefined) (obj as any)._baseOpacity = obj.opacity ?? 1;
+        const baseOp = (obj as LayerAwareObject)._baseOpacity ?? obj.opacity ?? 1;
+        if ((obj as LayerAwareObject)._baseOpacity === undefined) (obj as LayerAwareObject)._baseOpacity = obj.opacity ?? 1;
         obj.opacity = baseOp * layerOp;
         obj.selectable = !layer.locked;
         obj.evented = !layer.locked;
@@ -804,9 +727,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
       }
       case 'CHANGE_BG':
         backgroundColorRef.current = d.color || '#ffffff';
-        c.backgroundColor = showGrid
-          ? new fabric.Pattern({ source: makeGridPattern(), repeat: 'repeat' })
-          : backgroundColorRef.current;
+        c.backgroundColor = makeCanvasBackground(showGrid, backgroundColorRef.current);
         saveState(c);
         break;
       case 'CLEAR_CANVAS':
@@ -815,13 +736,11 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
       case 'GENERATE_IMAGE': {
         const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(d.prompt || 'abstract art')}?width=512&height=512&nofeed=true`;
         fabric.Image.fromURL(url, { crossOrigin: 'anonymous' }).then((img) => {
-          const cw = c.width || 512;
-          const ch = c.height || 512;
-          const s = Math.min(cw * 0.8 / (img.width || 512), ch * 0.8 / (img.height || 512));
-          img.set({ scaleX: s, scaleY: s, left: (cw - (img.width || 512) * s) / 2, top: (ch - (img.height || 512) * s) / 2 });
+          img.set(getImagePlacement(c, img));
           c.add(img);
           c.renderAll();
-        }).catch(() => {
+        }).catch((e) => {
+          console.warn('Failed to generate image:', e);
           c.add(new fabric.Text(`✨ ${d.prompt}`, { left: 100, top: 100, fontSize: 24, fill: '#334155', fontFamily: 'Outfit' }));
           c.renderAll();
         });
@@ -839,7 +758,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
           const sel = c.getActiveObject();
           if (sel) {
             objs = sel.type === 'activeSelection' && 'getObjects' in sel
-              ? (sel as any).getObjects()
+              ? (sel as fabric.ActiveSelection).getObjects()
               : [sel];
           }
         }
@@ -889,7 +808,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
           const sel = c.getActiveObject();
           if (sel) {
             objs = sel.type === 'activeSelection' && 'getObjects' in sel
-              ? (sel as any).getObjects()
+              ? (sel as fabric.ActiveSelection).getObjects()
               : [sel];
           }
         }
@@ -937,19 +856,18 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
         break;
       }
       case 'STORY_SCENE': {
-        const sceneActions: any[] = d.actions || [];
-        (sceneActions || []).forEach((sa: any, si: number) => {
+        const sceneActions: AIAction[] = d.actions || [];
+        (sceneActions || []).forEach((sa: AIAction, si: number) => {
           setTimeout(() => {
             if (sa.action === 'GENERATE_IMAGE' && sa.prompt) {
               const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(sa.prompt)}?width=512&height=512&nofeed=true`;
               fabric.Image.fromURL(url, { crossOrigin: 'anonymous' }).then((img) => {
-                const cw = c.width || 512;
-                const ch = c.height || 512;
-                const s = Math.min(cw * 0.8 / (img.width || 512), ch * 0.8 / (img.height || 512));
-                img.set({ scaleX: s, scaleY: s, left: (cw - (img.width || 512) * s) / 2, top: (ch - (img.height || 512) * s) / 2, opacity: 0 });
+                img.set({ ...getImagePlacement(c, img), opacity: 0 });
                 c.add(img);
                 img.animate({ opacity: 1 }, { duration: 800, onChange: () => c.requestRenderAll() });
-              }).catch(() => {});
+              }).catch((e) => {
+                console.warn('STORY_SCENE image failed:', e);
+              });
             } else if (sa.action === 'ADD_SHAPE' && sa.shape) {
               const newObj = makeShape(sa.shape as ToolType, sa.color || '#10B981', sa.size || 120, objectStrokeWidth);
               if (newObj) {
@@ -960,9 +878,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
               }
             } else if (sa.action === 'CHANGE_BG' && sa.color) {
               backgroundColorRef.current = sa.color;
-              c.backgroundColor = showGrid
-                ? new fabric.Pattern({ source: makeGridPattern(), repeat: 'repeat' })
-                : backgroundColorRef.current;
+              c.backgroundColor = makeCanvasBackground(showGrid, backgroundColorRef.current);
             } else if (sa.action === 'CLEAR_CANVAS') {
               handleClear();
             } else if (sa.action === 'ADD_TEXT' && sa.text) {
@@ -998,9 +914,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
   useEffect(() => {
     const c = fabricCanvasRef.current;
     if (!c) return;
-    c.backgroundColor = showGrid
-      ? new fabric.Pattern({ source: makeGridPattern(), repeat: 'repeat' })
-      : backgroundColorRef.current;
+    c.backgroundColor = makeCanvasBackground(showGrid, backgroundColorRef.current);
     c.requestRenderAll();
   }, [showGrid]);
 
@@ -1042,23 +956,6 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     if (typeof obj.width === 'number' && obj.width > 0 && obj.type !== 'path') setObjectSize(Math.round(obj.width * (obj.scaleX || 1)));
     setLiveMessage(`Seleccionado ${obj.type || 'objeto'}.`);
   };
-
-  function makeGridPattern() {
-    const gridCanvas = document.createElement('canvas');
-    gridCanvas.width = 32;
-    gridCanvas.height = 32;
-    const ctx = gridCanvas.getContext('2d')!;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 32, 32);
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(32, 0);
-    ctx.lineTo(32, 32);
-    ctx.lineTo(0, 32);
-    ctx.stroke();
-    return gridCanvas;
-  }
 
   const changeColor = (nextColor: string) => {
     setColor(nextColor);
@@ -1134,19 +1031,10 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
     }
   };
 
-  const profileHint: Record<WorkProfile, string> = {
-    artist: 'Perfil artista: color, textura y composición libre.',
-    education: 'Perfil educación: crea recursos visuales claros y explicativos.',
-    architecture: 'Perfil arquitectura: usa grid, formas y proporciones.',
-    medical: 'Perfil médico: prioriza diagramas claros y etiquetas.',
-    legal: 'Perfil legal: prioriza esquemas, flujos y evidencias visuales.',
-    diagram: 'Perfil diagrama: estructura ideas con formas, texto y relaciones.',
-  };
-
   return (
     <div className="flex-1 min-h-0 min-w-0 flex flex-col-reverse md:flex-row overflow-hidden touch-none overscroll-none">
       <aside className={cn("h-16 md:h-full md:w-20 bg-slate-900 border-t md:border-t-0 md:border-r border-slate-800 flex md:flex-col items-center justify-around md:justify-start md:py-6 px-2 md:px-0 md:gap-3 shrink-0 transition-transform", accessibility.easyRead && "scale-110 origin-bottom-left")}>
-        {TOOLS.map(({ type, icon: Icon }) => (
+        {TOOLS.map(({ type, icon: Icon, label }) => (
           <button
             key={type}
             onClick={() => selectTool(type)}
@@ -1156,14 +1044,7 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
                 ? "bg-blue-600 text-white shadow-blue-500/20 ring-4 ring-blue-500/10"
                 : "bg-slate-800 text-slate-400 hover:bg-slate-700"
             )}
-            aria-label={{
-              pencil: 'Pincel',
-              rect: 'Rectángulo',
-              circle: 'Círculo',
-              triangle: 'Triángulo',
-              curve: 'Curva Bezier',
-              polygon: 'Polígono',
-            }[type]}
+             aria-label={label}
           >
             <Icon size={16} className="md:w-5 md:h-5" />
           </button>
