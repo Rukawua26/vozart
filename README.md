@@ -1,10 +1,30 @@
 # VozArt
 
-VozArt es una app de dibujo asistido por IA con control por voz en espanol, canvas accesible sobre Fabric.js, proyectos locales y build Android lista para pruebas.
+> Dibujo asistido por IA con control por voz, canvas accesible y APK Android lista para pruebas.
 
-[Descargar APK QA](https://github.com/Rukawua26/vozart/releases/tag/v1.5.0-qa)
+[![Release](https://img.shields.io/github/v/release/Rukawua26/vozart?label=release)](https://github.com/Rukawua26/vozart/releases/tag/v1.5.0-qa)
+[![CI](https://img.shields.io/github/actions/workflow/status/Rukawua26/vozart/ci.yml?branch=main&label=ci)](https://github.com/Rukawua26/vozart/actions)
+[![Tech](https://img.shields.io/badge/stack-React%2019%20%7C%20Express%20%7C%20Fabric.js-0f172a)](https://github.com/Rukawua26/vozart)
+[![Android](https://img.shields.io/badge/android-APK%20QA-3ddc84)](https://github.com/Rukawua26/vozart/releases/tag/v1.5.0-qa)
 
-## Por Que Llama La Atencion
+[Descargar APK QA](https://github.com/Rukawua26/vozart/releases/tag/v1.5.0-qa) · [Ver Releases](https://github.com/Rukawua26/vozart/releases) · [Ver CI](https://github.com/Rukawua26/vozart/actions)
+
+## Resumen
+
+VozArt es una app de dibujo asistido por IA pensada para crear con voz o texto en espanol sobre un canvas accesible construido con Fabric.js. Combina herramientas visuales reales, providers de IA intercambiables, proyectos locales y una build Android para validar el producto fuera del navegador.
+
+## Navegacion Rapida
+
+- [Por Que Destaca](#por-que-destaca)
+- [Lo Que Ya Hace](#lo-que-ya-hace)
+- [Comandos De Ejemplo](#comandos-de-ejemplo)
+- [Arranque Local](#arranque-local)
+- [Descargar APK](#descargar-apk)
+- [Arquitectura](#arquitectura)
+- [Android](#android)
+- [Calidad](#calidad)
+
+## Por Que Destaca
 
 - Voz + texto: dicta comandos en espanol o escribe manualmente.
 - IA multi-provider: Gemini, OpenAI, Anthropic y Ollama.
@@ -14,7 +34,7 @@ VozArt es una app de dibujo asistido por IA con control por voz en espanol, canv
 - Accesibilidad real: alto contraste, lectura facil, UI grande, menos motion, atajos y anuncios `aria-live`.
 - Android: APK via Capacitor para validar la experiencia en movil.
 
-## Highlights
+## Lo Que Ya Hace
 
 | Area | Incluye |
 | --- | --- |
@@ -26,9 +46,22 @@ VozArt es una app de dibujo asistido por IA con control por voz en espanol, canv
 | Accesibilidad | Navegacion por teclado, lector de pantalla, perfiles de uso |
 | Android | Build release APK y configuracion Capacitor |
 
-## Demo Rapida
+## Estado
 
-Comandos que VozArt entiende bien:
+El alcance original del producto esta implementado al 100%.
+
+- Pinceles realistas + stylus
+- Modos de fusion
+- Story mode
+- Smudge tool
+- Snapping
+- Modo auto/manual para acciones IA
+- Proyectos locales con import/export y URL compartible
+- APK Android de prueba
+
+## Comandos De Ejemplo
+
+VozArt entiende bien instrucciones como estas:
 
 - `dibuja un circulo azul grande`
 - `pon el fondo en negro`
@@ -45,19 +78,6 @@ Comandos que VozArt entiende bien:
 - Mobile: Capacitor Android
 - Testing: Vitest
 
-## Estado
-
-El alcance original del producto esta implementado al 100%.
-
-- Pinceles realistas + stylus
-- Modos de fusion
-- Story mode
-- Smudge tool
-- Snapping
-- Modo auto/manual para acciones IA
-- Proyectos locales con import/export y URL compartible
-- APK Android de prueba
-
 ## Arranque Local
 
 ```bash
@@ -71,9 +91,8 @@ Abre `http://localhost:3000`.
 ## Descargar APK
 
 - Release actual: `v1.5.0-qa`
-- Descarga directa desde GitHub Releases:
-
-`https://github.com/Rukawua26/vozart/releases/tag/v1.5.0-qa`
+- Descarga directa: `https://github.com/Rukawua26/vozart/releases/tag/v1.5.0-qa`
+- Archivo incluido: `VozArt-QA-v1.5.0.apk`
 
 ## Variables De Entorno
 
