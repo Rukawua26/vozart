@@ -2,6 +2,8 @@
 
 > Dibujo asistido por IA con control por voz, canvas accesible y APK Android lista para pruebas.
 
+![VozArt Banner](./public/vozart-banner.svg)
+
 [![Release](https://img.shields.io/github/v/release/Rukawua26/vozart?label=release)](https://github.com/Rukawua26/vozart/releases/tag/v1.5.0-qa)
 [![CI](https://img.shields.io/github/actions/workflow/status/Rukawua26/vozart/ci.yml?branch=main&label=ci)](https://github.com/Rukawua26/vozart/actions)
 [![Tech](https://img.shields.io/badge/stack-React%2019%20%7C%20Express%20%7C%20Fabric.js-0f172a)](https://github.com/Rukawua26/vozart)

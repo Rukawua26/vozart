@@ -1,0 +1,72 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#020617"/>
+      <stop offset="0.55" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="161" y1="116" x2="1088" y2="531" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="0.5" stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0F172A" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#020617" stop-opacity="0.78"/>
+    </linearGradient>
+    <filter id="blur" x="0" y="0" width="1280" height="640" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="640" rx="32" fill="url(#bg)"/>
+
+  <g filter="url(#blur)" opacity="0.55">
+    <circle cx="236" cy="114" r="118" fill="#3B82F6"/>
+    <circle cx="1115" cy="132" r="132" fill="#22C55E"/>
+    <circle cx="985" cy="518" r="134" fill="#06B6D4"/>
+  </g>
+
+  <rect x="64" y="64" width="1152" height="512" rx="28" fill="url(#card)" stroke="rgba(148,163,184,0.22)"/>
+
+  <rect x="98" y="98" width="52" height="52" rx="16" fill="url(#accent)"/>
+  <path d="M117 128L128 117L141 130L162 109" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="178" y="134" fill="white" font-family="Inter, Arial, sans-serif" font-size="52" font-weight="800">VozArt</text>
+  <text x="178" y="175" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">IA + voz + canvas accesible + Android</text>
+
+  <text x="100" y="244" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Crea dibujando con voz en espanol</text>
+  <text x="100" y="283" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500">Control por voz, providers multiples y flujo visual sobre Fabric.js</text>
+
+  <rect x="100" y="327" width="177" height="44" rx="22" fill="#1D4ED8"/>
+  <text x="127" y="355" fill="white" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Story mode</text>
+
+  <rect x="292" y="327" width="196" height="44" rx="22" fill="#14532D"/>
+  <text x="323" y="355" fill="white" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Pinceles pro</text>
+
+  <rect x="503" y="327" width="183" height="44" rx="22" fill="#0F766E"/>
+  <text x="531" y="355" fill="white" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">APK QA</text>
+
+  <rect x="743" y="117" width="404" height="329" rx="24" fill="#020617" stroke="#1E293B"/>
+  <rect x="769" y="142" width="352" height="26" rx="13" fill="#0F172A"/>
+  <circle cx="791" cy="155" r="6" fill="#EF4444"/>
+  <circle cx="811" cy="155" r="6" fill="#F59E0B"/>
+  <circle cx="831" cy="155" r="6" fill="#22C55E"/>
+
+  <rect x="777" y="196" width="128" height="128" rx="24" fill="#0F172A" stroke="#1E40AF"/>
+  <circle cx="841" cy="260" r="34" fill="#3B82F6" fill-opacity="0.18" stroke="#60A5FA" stroke-width="8"/>
+
+  <rect x="923" y="196" width="190" height="18" rx="9" fill="#1E293B"/>
+  <rect x="923" y="227" width="162" height="14" rx="7" fill="#334155"/>
+  <rect x="923" y="259" width="141" height="14" rx="7" fill="#334155"/>
+
+  <rect x="923" y="302" width="123" height="34" rx="17" fill="#1D4ED8"/>
+  <text x="952" y="324" fill="white" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">AI_ACTION</text>
+
+  <rect x="777" y="359" width="336" height="62" rx="18" fill="#0F172A" stroke="#1E293B"/>
+  <text x="801" y="397" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="600">"dibuja un circulo azul grande"</text>
+
+  <rect x="100" y="438" width="566" height="92" rx="22" fill="#020617" stroke="#1E293B"/>
+  <text x="128" y="476" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Listo para GitHub, demo y validacion Android</text>
+  <text x="128" y="510" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="500">README profesional, release publica, CI y APK descargable</text>
+</svg>
