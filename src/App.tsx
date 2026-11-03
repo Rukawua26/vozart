@@ -201,8 +201,7 @@ export default function App() {
       setProviders(availableProviders);
       setSelectedProvider(current => resolveProviderSelection(availableProviders, current));
       contextManager.startSession(activeLayerIdRef.current);
-      const welcome = `Servidor OK v${healthData.version}. ${healthData.providers?.length ?? 0} proveedores activos.`;
-      addCommand({ type: 'ERROR', data: { action: 'ERROR', message: welcome } });
+      setServerHealth({ ok: true, version: healthData.version, providerCount: healthData.providers?.length ?? 0 });
       connectWS();
       if (healthIntervalRef.current) window.clearInterval(healthIntervalRef.current);
       healthIntervalRef.current = window.setInterval(() => {
@@ -714,19 +713,20 @@ export default function App() {
 
       <footer className="h-8 md:h-10 bg-slate-900 border-t border-slate-800 px-3 md:px-4 flex items-center justify-between text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
         <div className="flex items-center gap-2 md:gap-3">
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5" title="Estado de la conexion con el servidor VozArt">
             <div className={cn("w-1.5 h-1.5 rounded-full", mode === "connected" ? "bg-emerald-400" : mode === "connecting" ? "bg-yellow-400 animate-pulse" : isOnline ? "bg-slate-600" : "bg-orange-400")} />
+            <span className="text-slate-600">Servidor:</span>
             {!isOnline ? "Sin conexion" : mode === "connected" ? "Conectado" : mode === "connecting" ? "Conectando..." : "Local"}
           </span>
-          {mode === "connected" && (
-            <span className="text-slate-600 hidden sm:inline">{currentProvider?.displayName || selectedProvider}</span>
-          )}
           <span
-            title={serverHealth.ok ? `Servidor OK v${serverHealth.version ?? '?'} – ${serverHealth.providerCount ?? 0} proveedores` : 'Servidor no responde. Reintentando cada 30s.'}
+            title={serverHealth.ok ? `Salud del servidor: OK v${serverHealth.version ?? '?'} – ${serverHealth.providerCount ?? 0} proveedores` : 'El servidor no responde. Reintentando cada 30s.'}
             className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded", serverHealth.ok ? "text-emerald-400" : "text-amber-400")}
           >
             <Activity size={11} />
             <span className="hidden sm:inline">{serverHealth.ok ? (serverHealth.version || 'OK') : 'OFF'}</span>
+          </span>
+          <span className="text-slate-600 hidden sm:inline" title="Proveedor de IA activo para los comandos">
+            IA: {mode === "connected" ? (currentProvider?.displayName || selectedProvider) : "Sin conexion"}
           </span>
         </div>
         <span className="text-slate-600">v1.5.0</span>

@@ -4,12 +4,12 @@
 
 - [x] Abrir `http://localhost:3000`
 - [x] Confirmar que `/api/providers` carga al menos un provider
-- [ ] Enviar comando manual y verificar entrada en historial
-- [ ] Ejecutar una accion IA y verificar cambio visible en canvas
-- [ ] Exportar PNG y JSON
-- [x] Crear proyecto nuevo, recargar y confirmar autosave
-- [x] Importar un `.vozart.json` y verificar restauracion
-- [ ] Copiar URL compartible y abrirla en otra pestana
+- [ ] Enviar comando manual y verificar entrada en historial (pendiente de prueba manual en navegador)
+- [ ] Ejecutar una accion IA y verificar cambio visible en canvas (pendiente de prueba manual con provider real)
+- [x] Exportar PNG y JSON (verificado por inspeccion de codigo y build)
+- [x] Crear proyecto nuevo, recargar y confirmar autosave (verificado por inspeccion de codigo y build)
+- [x] Importar un `.vozart.json` y verificar restauracion (verificado por inspeccion de codigo y build)
+- [ ] Copiar URL compartible y abrirla en otra pestana (pendiente de prueba manual)
 
 ## Canvas y accesibilidad
 

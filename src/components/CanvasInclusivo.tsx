@@ -53,6 +53,8 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
   const [snappingEnabled, setSnappingEnabled] = useState(false);
   const [blendMode, setBlendMode] = useState<BlendMode>('source-over');
   const [showBlendPicker, setShowBlendPicker] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const [referenceImage, setReferenceImage] = useState<fabric.Image | null>(null);
   const [animTarget, setAnimTarget] = useState({ x: 200, y: 150, rotation: 0, scale: 1, opacity: 1 });
   const [isAnimating, setIsAnimating] = useState(false);
@@ -920,7 +922,8 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
 
         <div
           className={cn(
-            "absolute z-20 max-w-[calc(100%-16px)] rounded-2xl border border-slate-700/80 bg-slate-950/90 p-3 shadow-2xl backdrop-blur touch-auto md:w-80 transition-transform",
+            "absolute z-20 max-w-[calc(100%-16px)] rounded-2xl border border-slate-700/80 bg-slate-950/90 p-3 shadow-2xl backdrop-blur touch-auto transition-transform",
+            panelExpanded && "md:w-80",
             accessibility.easyRead && "scale-110 origin-top-left"
           )}
           style={{ left: panelPosition.x, top: panelPosition.y }}
@@ -950,18 +953,30 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
           />
 
           <div
-            className="mb-3 flex cursor-move touch-none items-center justify-between rounded-xl bg-slate-800/80 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300"
+            className="mb-3 flex touch-none items-center justify-between rounded-xl bg-slate-800/80 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300"
             onPointerDown={startPanelDrag}
             onPointerMove={dragPanel}
             onPointerUp={stopPanelDrag}
             onPointerCancel={stopPanelDrag}
           >
-            <span>Herramientas</span>
-            <span className="flex items-center gap-1 text-slate-500">
+            <span className="flex items-center gap-1 cursor-move text-slate-500">
               <Move size={13} /> Mover
             </span>
+            <span className="font-black text-slate-300">Herramientas</span>
+            <button
+              type="button"
+              aria-expanded={panelExpanded}
+              aria-controls="canvas-tool-options"
+              aria-label={panelExpanded ? 'Ocultar herramientas' : 'Mostrar herramientas'}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => setPanelExpanded((expanded) => !expanded)}
+              className="min-h-10 rounded-lg bg-slate-700 px-3 text-[10px] font-black text-white hover:bg-slate-600"
+            >
+              {panelExpanded ? 'Cerrar' : 'Abrir'}
+            </button>
           </div>
 
+          <div id="canvas-tool-options" hidden={!panelExpanded}>
           <p className="mb-3 rounded-xl bg-slate-800/60 px-3 py-2 text-[10px] font-bold text-slate-300">
             {profileHint[workProfile]}
           </p>
@@ -1033,6 +1048,24 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
           </div>
 
           <button
+            onClick={deleteSelectedObject}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/15 px-3 py-2 text-xs font-black text-red-300 transition-colors hover:bg-red-500 hover:text-white"
+          >
+            <Trash2 size={14} /> Borrar selección
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setToolsExpanded(prev => !prev)}
+            aria-expanded={toolsExpanded}
+            className="mt-2 flex w-full min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-800 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 transition-colors hover:bg-slate-700"
+          >
+            {toolsExpanded ? 'Menos herramientas' : 'Más herramientas'}
+          </button>
+
+          {toolsExpanded && (
+          <>
+          <button
             onClick={() => setShowBlendPicker(prev => !prev)}
             className={cn('mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors', showBlendPicker || blendMode !== 'source-over' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}
           >
@@ -1045,13 +1078,6 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
               ))}
             </div>
           )}
-
-          <button
-            onClick={deleteSelectedObject}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/15 px-3 py-2 text-xs font-black text-red-300 transition-colors hover:bg-red-500 hover:text-white"
-          >
-            <Trash2 size={14} /> Borrar selección
-          </button>
 
           <div className="mt-2 space-y-2">
             <div className="grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-wider">
@@ -1097,6 +1123,9 @@ export const CanvasInclusivo: React.FC<CanvasProps> = ({ commands, canvasApiRef,
               <button onClick={exportJPG} className="rounded-xl bg-slate-800 px-2 py-2 text-slate-300 hover:bg-slate-700">JPG</button>
               <button onClick={exportJSON} className="col-span-2 rounded-xl bg-slate-800 px-2 py-2 text-slate-300 hover:bg-slate-700">JSON</button>
             </div>
+          </div>
+          </>
+          )}
           </div>
         </div>
 

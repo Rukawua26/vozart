@@ -4,7 +4,7 @@ import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT, sanitizeInput, p
 export class GeminiProvider implements AIProvider {
   readonly name = "gemini";
   readonly displayName = "Gemini";
-  readonly models = ["gemini-2.0-flash", "gemini-2.5-flash-preview", "gemini-3-flash-preview"];
+  readonly models = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
 
   async processCommand(text: string, config?: AIProviderConfig): Promise<AIAction[]> {
     const apiKey = config?.apiKey || process.env.GEMINI_API_KEY || "";
@@ -19,7 +19,7 @@ export class GeminiProvider implements AIProvider {
       },
     });
 
-    const model = config?.model || "gemini-2.0-flash";
+    const model = config?.model || "gemini-2.5-flash";
     const cleaned = sanitizeInput(text);
     const effectivePrompt = (config?.context ? `${SYSTEM_PROMPT}\n\nContexto del usuario:\n${config.context}\n\n` : SYSTEM_PROMPT);
 

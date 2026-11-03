@@ -10,6 +10,7 @@ import dotenv from "dotenv";
 import { z } from "zod";
 import { getProvider, listProviders } from "./server/ai/registry.js";
 import type { AIAction } from "./server/ai/types.js";
+import { buildCspDirectives } from "./server/security-headers.js";
 
 interface AliveWebSocket extends WebSocket {
   isAlive?: boolean;
@@ -79,17 +80,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 
 app.use(helmet({
   contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "https://image.pollinations.ai", "data:", "blob:"],
-      connectSrc: ["'self'", "ws:", "wss:"],
-      fontSrc: ["'self'", "data:"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
-    },
+    directives: buildCspDirectives(process.env.NODE_ENV === "production"),
   },
 }));
 app.use(cors({
@@ -105,6 +96,7 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api", apiLimiter);
+app.use(express.json());
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
@@ -118,12 +110,39 @@ app.get("/api/providers", (req, res) => {
   res.json(listProviders().map(p => ({ name: p.name, displayName: p.displayName, models: p.models })));
 });
 
+app.post("/api/test-provider", async (req, res) => {
+  if (!isAuthorizedToken(getBearerToken(req.headers.authorization))) {
+    res.status(401).json({ error: "No autorizado" });
+    return;
+  }
+  const { provider: providerName, model } = req.body || {};
+  const provider = getProvider(providerName);
+  if (!provider) {
+    res.status(400).json({ ok: false, error: "Proveedor no encontrado" });
+    return;
+  }
+  try {
+    const result = await withTimeout(
+      provider.processCommand("dibuja un circulo azul", {
+        model: model || undefined,
+      }),
+      AI_PROVIDER_TIMEOUT_MS,
+      providerName,
+    );
+    const authError = result.some(a => a.action === "ERROR" && /api.key|auth|unauthorized|401|403|invalid/i.test(a.message || ""));
+    const ok = !authError && result.length > 0;
+    res.json({ ok, provider: providerName, model: model || provider.models[0], error: authError ? result.find(a => a.action === "ERROR")?.message : undefined });
+  } catch (err: any) {
+    res.json({ ok: false, provider: providerName, error: String(err?.message || err) });
+  }
+});
+
 app.get("/api/health", (_req, res) => {
   const providerList = listProviders().map(p => p.name);
   res.json({
     status: "ok",
     uptime: process.uptime(),
-    version: "1.4.0",
+    version: "1.5.0",
     serverTime: Date.now(),
     providers: providerList,
     websocket: {

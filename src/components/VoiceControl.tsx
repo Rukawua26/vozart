@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Mic, MicOff, Send, MessageSquare, Layers, Eye, EyeOff, Cpu, X, Plus, Trash2, Lock, Unlock, ArrowUp, ArrowDown, FolderOpen, Share2, Upload, Save, Sparkles, List } from 'lucide-react';
+import { AlertCircle, Mic, MicOff, Send, MessageSquare, Layers, Eye, EyeOff, Cpu, X, Plus, Trash2, Lock, Unlock, ArrowUp, ArrowDown, FolderOpen, Share2, Upload, Save, Sparkles, List, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
+const APP_ACCESS_TOKEN = (import.meta as any).env?.VITE_APP_ACCESS_TOKEN || '';
+const SERVER_URL = ((import.meta as any).env?.VITE_SERVER_URL || '').replace(/\/$/, '');
 import { motion, AnimatePresence } from 'motion/react';
 import type { AccessibilitySettings, AppCommand, Layer, ProjectSnapshot, WorkProfile } from '../types';
 
@@ -65,6 +67,28 @@ interface VoiceControlProps {
   onConfirmAction: (index: number) => void;
   onRejectAction: (index: number) => void;
 }
+
+const Section: React.FC<{ title: string; icon?: React.ReactNode; badge?: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode }> = ({ title, icon, badge, defaultOpen = false, children }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="mb-3 bg-slate-950/50 rounded-xl border border-slate-800">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="w-full min-h-11 flex items-center gap-2 px-3 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors"
+      >
+        {icon}
+        <span>{title}</span>
+        <span className="ml-auto flex items-center gap-2">
+          {badge}
+          <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
+        </span>
+      </button>
+      {open && <div className="px-3 pb-3">{children}</div>}
+    </div>
+  );
+};
 
 export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, commands, providers, selectedProvider, onProviderChange, isProcessing, layers, activeLayerId, onAddLayer, onRemoveLayer, onToggleLayer, onRenameLayer, onToggleLockLayer, onLayerOpacity, onMoveLayer, onSelectLayer, accessibility, onAccessibilityChange, workProfile, onWorkProfileChange, projectName, onProjectNameChange, collaboratorName, onCollaboratorNameChange, projects, currentProjectId, autosaveStatus, onNewProject, onOpenProject, onDeleteProject, onExportProject, onImportProject, onCopyShareUrl, onClose, onInspiration, onRefineSelection, canvasObjects, handTrackingActive, onToggleHandTracking, roomId, collaborators, onJoinRoom, onLeaveRoom, eyeTrackingActive, onToggleEyeTracking, storyMode, onStoryCommand, onExitStoryMode, autoMode, onToggleAutoMode, pendingActions, onConfirmAction, onRejectAction }) => {
   const [isListening, setIsListening] = useState(false);
@@ -155,25 +179,99 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
         )}
       </div>
 
-      <div className="mb-4 p-3 bg-slate-950/50 rounded-xl border border-slate-800">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Perfil de uso</span>
+      {/* Crear: entrada de comando siempre accesible sin desplazar controles (S4) */}
+      <div className="mb-4 flex flex-col items-center gap-3 py-4 bg-slate-950/50 rounded-2xl border border-slate-800">
+        {speechUnsupported ? (
+          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center opacity-50">
+            <Mic size={24} className="text-slate-500" />
+          </div>
+        ) : (
+          <button
+            onClick={toggleListening}
+            aria-label={isListening ? 'Detener dictado' : 'Hablar comando'}
+            className={cn(
+              "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 relative",
+              isListening ? "bg-red-500 shadow-lg shadow-red-500/40 animate-pulse" : "bg-slate-800 hover:bg-slate-700"
+            )}
+          >
+            {isListening ? <MicOff size={24} className="text-white" /> : <Mic size={24} className="text-white" />}
+            {isListening && (
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.2, 0.5] }}
+                transition={{ repeat: Infinity, duration: 1 }}
+                className="absolute inset-0 rounded-full bg-red-500 -z-10"
+              />
+            )}
+          </button>
+        )}
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          {speechUnsupported ? 'No compatible' : isListening ? 'Escuchando...' : 'Presiona para hablar'}
+        </p>
+        {isProcessing && (
+          <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest animate-pulse">
+            Procesando...
+          </p>
+        )}
+        {speechUnsupported && (
+          <p className="text-[9px] text-slate-600 text-center px-2">Speech API no disponible en este navegador</p>
+        )}
+        <form onSubmit={handleManualSend} className="w-full">
+          <div className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800 focus-within:border-blue-500/50 transition-all">
+            <MessageSquare size={14} className="ml-2 text-slate-600" />
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Comando manual..."
+              aria-label="Comando manual"
+              className="flex-1 bg-transparent border-none focus:ring-0 text-xs py-1.5 px-1 placeholder:text-slate-700 outline-none"
+            />
+            <button
+              type="submit"
+              aria-label="Enviar comando"
+              className="min-w-9 min-h-9 flex items-center justify-center bg-blue-600 text-white rounded-lg hover:scale-105 transition-transform"
+            >
+              <Send size={12} />
+            </button>
+          </div>
+        </form>
+        <div className="grid grid-cols-2 gap-2 w-full">
+          <button onClick={onInspiration} className="min-h-9 rounded-xl bg-purple-500/10 px-2 py-2 text-[10px] font-black uppercase tracking-wider text-purple-300 hover:bg-purple-500 hover:text-white transition-colors flex items-center justify-center gap-1">
+            <Sparkles size={11} /> Inspiración
+          </button>
+          <button onClick={onRefineSelection} className="min-h-9 rounded-xl bg-amber-500/10 px-2 py-2 text-[10px] font-black uppercase tracking-wider text-amber-300 hover:bg-amber-500 hover:text-white transition-colors flex items-center justify-center gap-1">
+            <Send size={11} /> Refinar
+          </button>
         </div>
-        <select
-          value={workProfile}
-          onChange={(e) => onWorkProfileChange(e.target.value as WorkProfile)}
-          className="w-full bg-slate-800 text-white text-xs rounded-lg px-3 py-2 border border-slate-700 outline-none focus:border-blue-500/50"
-          aria-label="Perfil de uso"
-        >
-          {profiles.map(profile => <option key={profile.value} value={profile.value}>{profile.label}</option>)}
-        </select>
+        {!autoMode && pendingActions.length > 0 && (
+          <div className="w-full space-y-2">
+            <p className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Acciones pendientes</p>
+            {pendingActions.map((action, i) => (
+              <div key={i} className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-2">
+                <p className="text-[10px] text-amber-200 mb-1 truncate">
+                  {action.data?.action || 'AI Action'}
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={() => onConfirmAction(i)} className="flex-1 rounded-lg bg-emerald-600 px-2 py-1 text-[9px] font-black text-white hover:bg-emerald-500">Confirmar</button>
+                  <button onClick={() => onRejectAction(i)} className="flex-1 rounded-lg bg-red-600 px-2 py-1 text-[9px] font-black text-white hover:bg-red-500">Descartar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="mb-4 p-3 bg-slate-950/50 rounded-xl border border-slate-800">
-        <div className="flex items-center gap-2 mb-3">
-          <FolderOpen size={12} className="text-slate-500" />
-          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Proyecto</span>
-          <span className="ml-auto text-[9px] text-emerald-400 font-bold" title={autosaveStatus === 'Guardado' ? 'Proyecto guardado en el navegador' : autosaveStatus === 'Guardando...' ? 'Guardando cambios...' : 'Esperando cambios...'}>{autosaveStatus}</span>
+      <Section title="Proyecto" icon={<FolderOpen size={12} className="text-slate-500" />} badge={<span className="text-[9px] text-emerald-400 font-bold" title={autosaveStatus === 'Guardado' ? 'Proyecto guardado en el navegador' : autosaveStatus === 'Guardando...' ? 'Guardando cambios...' : 'Esperando cambios...'}>{autosaveStatus}</span>}>
+        <div className="mb-3">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Perfil de uso</span>
+          <select
+            value={workProfile}
+            onChange={(e) => onWorkProfileChange(e.target.value as WorkProfile)}
+            className="mt-1 w-full bg-slate-800 text-white text-xs rounded-lg px-3 py-2 border border-slate-700 outline-none focus:border-blue-500/50"
+            aria-label="Perfil de uso"
+          >
+            {profiles.map(profile => <option key={profile.value} value={profile.value}>{profile.label}</option>)}
+          </select>
         </div>
         <div className="space-y-2">
           <input
@@ -201,30 +299,7 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
               <option key={project.id} value={project.id}>{project.name}</option>
             ))}
         </select>
-        <button onClick={onInspiration} className="mt-2 w-full rounded-xl bg-purple-500/10 px-2 py-2 text-[10px] font-black uppercase tracking-wider text-purple-300 hover:bg-purple-500 hover:text-white transition-colors flex items-center justify-center gap-1">
-          <Sparkles size={11} /> Inspiración
-        </button>
-        <button onClick={onRefineSelection} className="mt-1.5 w-full rounded-xl bg-amber-500/10 px-2 py-2 text-[10px] font-black uppercase tracking-wider text-amber-300 hover:bg-amber-500 hover:text-white transition-colors flex items-center justify-center gap-1">
-          <Send size={11} /> Refinar selección
-        </button>
-        <button onClick={onToggleHandTracking} className={cn('mt-1.5 w-full rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', handTrackingActive ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>
-          <Eye size={11} /> {handTrackingActive ? 'Manos activo' : 'Activar manos'}
-        </button>
-        <button onClick={onToggleEyeTracking} className={cn('mt-1.5 w-full rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', eyeTrackingActive ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>
-          <Eye size={11} /> {eyeTrackingActive ? 'Ojos activo' : 'Activar ojos'}
-        </button>
-        <button onClick={onToggleAutoMode} className={cn('mt-1.5 w-full rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', autoMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-amber-600 text-white')}>
-          <Cpu size={11} /> {autoMode ? 'Auto' : 'Manual'}
-        </button>
-        <button onClick={() => onStoryCommand(inputText || 'cuenta una historia visual')} className={cn('mt-1.5 w-full rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', storyMode ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>
-          <List size={11} /> {storyMode ? 'Historia activa' : 'Modo Historia'}
-        </button>
-        {storyMode && (
-          <button onClick={onExitStoryMode} className="mt-1 w-full rounded-xl bg-slate-800 px-2 py-2 text-[10px] font-black text-slate-300 hover:bg-slate-700">
-            Salir de historia
-          </button>
-        )}
-      </div>
+        </div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-wider">
           <button onClick={onNewProject} className="rounded-xl bg-slate-800 px-2 py-2 text-slate-300 hover:bg-slate-700">Nuevo</button>
           <button onClick={onExportProject} className="rounded-xl bg-slate-800 px-2 py-2 text-slate-300 hover:bg-slate-700 flex items-center justify-center gap-1"><Save size={11} />Exportar</button>
@@ -235,12 +310,31 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
           <button onClick={() => onDeleteProject(currentProjectId)} className="mt-2 w-full rounded-xl bg-red-500/10 px-2 py-2 text-[10px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500 hover:text-white">Eliminar proyecto actual</button>
         )}
         <input ref={projectInputRef} type="file" accept=".json,.vozart.json" className="hidden" onChange={handleImportFile} />
-      </div>
+      </Section>
 
-      <div className="mb-4 p-3 bg-slate-950/50 rounded-xl border border-slate-800">
-        <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-          <Share2 size={11} /> Colaboración
-        </h3>
+      <Section title="Modos y asistencia" icon={<Cpu size={12} className="text-slate-500" />}>
+        <div className="space-y-1.5">
+          <button onClick={onToggleHandTracking} className={cn('w-full min-h-9 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', handTrackingActive ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>
+            <Eye size={11} /> {handTrackingActive ? 'Manos activo' : 'Activar manos'}
+          </button>
+          <button onClick={onToggleEyeTracking} className={cn('w-full min-h-9 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', eyeTrackingActive ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>
+            <Eye size={11} /> {eyeTrackingActive ? 'Ojos activo' : 'Activar ojos'}
+          </button>
+          <button onClick={onToggleAutoMode} className={cn('w-full min-h-9 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', autoMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-amber-600 text-white')}>
+            <Cpu size={11} /> {autoMode ? 'Auto' : 'Manual'}
+          </button>
+          <button onClick={() => onStoryCommand(inputText || 'cuenta una historia visual')} className={cn('w-full min-h-9 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors', storyMode ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>
+            <List size={11} /> {storyMode ? 'Historia activa' : 'Modo Historia'}
+          </button>
+          {storyMode && (
+            <button onClick={onExitStoryMode} className="w-full min-h-9 rounded-xl bg-slate-800 px-2 py-2 text-[10px] font-black text-slate-300 hover:bg-slate-700">
+              Salir de historia
+            </button>
+          )}
+        </div>
+      </Section>
+
+      <Section title="Colaboración" icon={<Share2 size={11} className="text-slate-500" />}>
         {roomId ? (
           <div className="space-y-2">
             <p className="text-[9px] text-slate-400">Sala: <span className="font-mono text-emerald-400">{roomId}</span></p>
@@ -250,14 +344,13 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
             </button>
           </div>
         ) : (
-          <button onClick={onJoinRoom} className="w-full rounded-xl bg-slate-800 px-2 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-slate-700 transition-colors">
+          <button onClick={onJoinRoom} className="w-full min-h-9 rounded-xl bg-slate-800 px-2 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-slate-700 transition-colors">
             Crear sala compartida
           </button>
         )}
-      </div>
+      </Section>
 
-      <div className="mb-4 p-3 bg-slate-950/50 rounded-xl border border-slate-800">
-        <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-3">Accesibilidad</h3>
+      <Section title="Accesibilidad">
         <div className="grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-wider">
           {([
             ['highContrast', 'Contraste'],
@@ -275,13 +368,9 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
             </button>
           ))}
         </div>
-      </div>
+      </Section>
 
-      <div className="mb-4 p-3 bg-slate-950/50 rounded-xl border border-slate-800">
-        <div className="flex items-center gap-2 mb-2">
-          <Cpu size={12} className="text-slate-500" />
-          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Proveedor IA</span>
-        </div>
+      <Section title="Proveedor IA" icon={<Cpu size={12} className="text-slate-500" />}>
         <select
           aria-label="Proveedor IA"
           value={selectedProvider}
@@ -299,56 +388,49 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
             ? 'Conecta el servidor VozArt para usar comandos IA.'
             : `Modelos: ${providers.find(provider => provider.name === selectedProvider)?.models.join(', ') || 'informacion no disponible'}`}
         </p>
-      </div>
-
-      <div className="flex flex-col items-center gap-4 py-6 bg-slate-950/50 rounded-2xl border border-slate-800 mb-6">
-        {speechUnsupported ? (
-          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center opacity-50">
-            <Mic size={24} className="text-slate-500" />
-          </div>
-        ) : (
+        <div className="mt-3 flex items-center gap-2">
           <button
-            onClick={toggleListening}
-            className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 relative",
-              isListening ? "bg-red-500 shadow-lg shadow-red-500/40 animate-pulse" : "bg-slate-800 hover:bg-slate-700"
-            )}
+            onClick={async () => {
+              try {
+                const headers: HeadersInit = APP_ACCESS_TOKEN ? { Authorization: `Bearer ${APP_ACCESS_TOKEN}` } : {};
+                const baseUrl = SERVER_URL || '';
+                const res = await fetch(`${baseUrl}/api/test-provider`, {
+                  method: 'POST',
+                  headers: { ...headers, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ provider: selectedProvider }),
+                });
+                const data = await res.json();
+                const msg = data.ok
+                  ? `Proveedor ${data.provider} OK. Listo para usar.`
+                  : `Proveedor ${data.provider} no responde. ${data.error || 'Verifica la clave en .env y reinicia el servidor.'}`;
+                onSendCommand(msg);
+              } catch {
+                onSendCommand('No se pudo probar la conexión. Verifica que el servidor esté corriendo.');
+              }
+            }}
+            className="min-h-9 flex-1 rounded-xl bg-slate-800 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-slate-700 transition-colors"
           >
-            {isListening ? <MicOff size={24} className="text-white" /> : <Mic size={24} className="text-white" />}
-            {isListening && (
-              <motion.div
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.2, 0.5] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-                className="absolute inset-0 rounded-full bg-red-500 -z-10"
-              />
-            )}
+            Probar conexión
           </button>
-        )}
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          {speechUnsupported ? 'No compatible' : isListening ? 'Escuchando...' : 'Presiona para hablar'}
+        </div>
+        <p className="mt-2 text-[9px] text-slate-600">
+          Si el proveedor falla, verifica que la clave esté en .env y reinicia el servidor.
         </p>
-        {isProcessing && (
-          <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest animate-pulse">
-            Procesando...
-          </p>
-        )}
-        {speechUnsupported && (
-          <p className="text-[9px] text-slate-600 text-center px-2">Speech API no disponible en este navegador</p>
-        )}
-      </div>
+      </Section>
 
-      <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Historial</h3>
-      <div className="flex flex-col gap-3 flex-1">
+      <Section title="Historial" defaultOpen>
+      <div className="flex flex-col gap-3">
         <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {history.length > 0 && `Último comando: "${history[0].type === 'ERROR' ? 'Error' : 'Ejecutado'}: ${history[0].type === 'ERROR' ? (history[0].data?.message || history[0].message) : (history[0].data.prompt || history[0].data.action)}"`}
+          {history.length > 0 && `Último comando: "${history[0].type === 'ERROR' ? (history[0].data?.action === 'INFO' ? 'Información' : 'Error') : 'Ejecutado'}: ${history[0].data?.message || (history[0].type === 'ERROR' ? history[0].message : history[0].data.prompt || history[0].data.action)}"`}
         </div>
         <AnimatePresence initial={false}>
           {history.length > 0 ? (
             history.map((cmd, i) => {
-              const isError = cmd.type === 'ERROR';
-              const message = isError
-                ? cmd.data?.message || cmd.message || 'No se pudo procesar el comando'
-                : cmd.data.prompt || cmd.data.action || 'Comando procesado';
+              const isInfo = cmd.type === 'ERROR' && cmd.data?.action === 'INFO';
+              const isError = cmd.type === 'ERROR' && !isInfo;
+              const message = cmd.data?.message || (isError
+                ? cmd.message || 'No se pudo procesar el comando'
+                : cmd.type === 'ERROR' ? 'Información' : cmd.data.prompt || cmd.data.action || 'Comando procesado');
               const time = cmd.timestamp
                 ? new Date(cmd.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : 'Ahora';
@@ -360,15 +442,15 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
                 animate={{ opacity: 1, x: 0 }}
                 className={cn(
                   "p-3 bg-slate-950 rounded-xl border-l-4 shadow-sm",
-                  isError ? "border-red-500" : "border-blue-500"
+                  isError ? "border-red-500" : isInfo ? "border-emerald-500" : "border-blue-500"
                 )}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className={cn(
                     "text-[9px] font-black uppercase tracking-wider",
-                    isError ? "text-red-400" : "text-blue-400"
+                    isError ? "text-red-400" : isInfo ? "text-emerald-400" : "text-blue-400"
                   )}>
-                    {isError ? 'Error' : 'Ejecutado'}
+                    {isError ? 'Error' : isInfo ? 'Información' : 'Ejecutado'}
                   </span>
                   <span className="text-[9px] text-slate-600 font-mono">{time}</span>
                 </div>
@@ -405,41 +487,7 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
         </div>
       )}
 
-      <form onSubmit={handleManualSend} className="relative my-6">
-        <div className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-slate-800 focus-within:border-blue-500/50 transition-all">
-          <MessageSquare size={14} className="ml-2 text-slate-600" />
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Comando manual..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-xs py-1.5 px-1 placeholder:text-slate-700 outline-none"
-          />
-          <button
-            type="submit"
-            className="p-1.5 bg-blue-600 text-white rounded-lg hover:scale-105 transition-transform"
-          >
-            <Send size={12} />
-          </button>
-        </div>
-      </form>
-
-      {!autoMode && pendingActions.length > 0 && (
-        <div className="mb-3 space-y-2">
-          <p className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Acciones pendientes</p>
-          {pendingActions.map((action, i) => (
-            <div key={i} className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-2">
-              <p className="text-[10px] text-amber-200 mb-1 truncate">
-                {action.data?.action || 'AI Action'}
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => onConfirmAction(i)} className="flex-1 rounded-lg bg-emerald-600 px-2 py-1 text-[9px] font-black text-white hover:bg-emerald-500">Confirmar</button>
-                <button onClick={() => onRejectAction(i)} className="flex-1 rounded-lg bg-red-600 px-2 py-1 text-[9px] font-black text-white hover:bg-red-500">Descartar</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      </Section>
 
       <div className="mt-auto">
         <div className="flex items-center justify-between mb-3">

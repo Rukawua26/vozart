@@ -3,11 +3,11 @@ import { AIProvider, AIProviderConfig, AIAction, SYSTEM_PROMPT, sanitizeInput, p
 export class OllamaProvider implements AIProvider {
   readonly name = "ollama";
   readonly displayName = "Ollama (local)";
-  readonly models = ["llama3", "llama3.2", "mistral", "mixtral", "qwen2.5", "deepseek-coder"];
+  readonly models = ["qwen2.5-coder:7b", "qwen3.5:4b", "qwen2.5-coder:3b", "phi4-mini:latest", "dolphin-phi:latest"];
 
   async processCommand(text: string, config?: AIProviderConfig): Promise<AIAction[]> {
     const baseUrl = (config?.baseUrl || process.env.OLLAMA_URL || "http://localhost:11434").replace(/\/$/, "");
-    const model = config?.model || "llama3.2";
+    const model = config?.model || "qwen2.5-coder:7b";
     const cleaned = sanitizeInput(text);
 
     try {

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Fuentes del sistema: se evita @import a fonts.googleapis.com para no violar la CSP de produccion (S5). */
 @import "tailwindcss";
 
 @theme {

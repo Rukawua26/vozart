@@ -3,6 +3,22 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+if ('serviceWorker' in navigator) {
+  if (window.location.hostname === 'localhost') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+      }).catch(() => undefined);
+    });
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch((error) => {
+        console.error('No se pudo registrar el service worker:', error);
+      });
+    });
+  }
+}
+
 interface ErrorBoundaryProps {
   children: ReactNode;
 }

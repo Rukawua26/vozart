@@ -176,6 +176,18 @@ npm test
 npm run build
 ```
 
+Estado verificado en esta auditoria:
+
+- `npm run lint`: OK
+- `npm test`: 11 archivos / 95 tests OK
+- `npm run build`: Vite + esbuild OK
+
+Seguridad:
+
+- La CSP de produccion mantiene `script-src 'self'`.
+- En desarrollo se permite el preambulo inline de Vite para evitar pantalla en blanco.
+- Las vulnerabilidades moderadas restantes estan en dependencias opcionales de tracking (`webgazer` / TensorFlow) y no bloquean el flujo principal.
+
 CI:
 
 - `.github/workflows/ci.yml`
