@@ -41,6 +41,7 @@ const DEFAULT_ACCESSIBILITY: AccessibilitySettings = {
 export default function App() {
   const [commands, setCommands] = useState<AppCommand[]>([]);
   const [mode, setMode] = useState<ServerMode>("connecting");
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [selectedProvider, setSelectedProvider] = useState(() => localStorage.getItem(PROVIDER_STORAGE_KEY) || 'gemini');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -118,6 +119,10 @@ export default function App() {
   }, [isProcessing]);
 
   const connectWS = useCallback(() => {
+    if (!navigator.onLine) {
+      setMode("local");
+      return;
+    }
     if (IS_CAPACITOR && !SERVER_URL) {
       setMode("local");
       addCommand({ type: 'ERROR', data: { action: 'ERROR', message: 'La app Android necesita VITE_SERVER_URL apuntando al servidor VozArt.' } });
@@ -221,7 +226,42 @@ export default function App() {
     };
   }, [addCommand, connectWS]);
 
+  useEffect(() => {
+    const headers: HeadersInit | undefined = APP_ACCESS_TOKEN ? { Authorization: `Bearer ${APP_ACCESS_TOKEN}` } : undefined;
+    const handleOffline = () => {
+      setIsOnline(false);
+      setMode("local");
+      setServerHealth(prev => ({ ...prev, ok: false }));
+      wsRef.current?.close();
+    };
+    const handleOnline = () => {
+      setIsOnline(true);
+      reconnectRef.current = 0;
+      const providersUrl = SERVER_URL ? `${SERVER_URL}/api/providers` : '/api/providers';
+      fetch(providersUrl, headers)
+        .then(response => response.ok ? response.json() : Promise.reject(new Error(`providers http ${response.status}`)))
+        .then(data => {
+          const availableProviders = Array.isArray(data) ? data : [];
+          setProviders(availableProviders);
+          setSelectedProvider(current => resolveProviderSelection(availableProviders, current));
+          connectWS();
+        })
+        .catch(() => setMode("local"));
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [connectWS]);
+
   const handleSendCommand = useCallback((text: string) => {
+    if (!navigator.onLine) {
+      addCommand({ type: 'ERROR', data: { action: 'ERROR', message: 'Sin conexion. El canvas y los proyectos locales siguen disponibles.' } });
+      return;
+    }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       setIsProcessing(true);
       ctxRef.current = contextManager.getCurrentContext();
@@ -675,8 +715,8 @@ export default function App() {
       <footer className="h-8 md:h-10 bg-slate-900 border-t border-slate-800 px-3 md:px-4 flex items-center justify-between text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
         <div className="flex items-center gap-2 md:gap-3">
           <span className="flex items-center gap-1.5">
-            <div className={cn("w-1.5 h-1.5 rounded-full", mode === "connected" ? "bg-emerald-400" : mode === "connecting" ? "bg-yellow-400 animate-pulse" : "bg-slate-600")} />
-            {mode === "connected" ? "Conectado" : mode === "connecting" ? "Conectando..." : "Local"}
+            <div className={cn("w-1.5 h-1.5 rounded-full", mode === "connected" ? "bg-emerald-400" : mode === "connecting" ? "bg-yellow-400 animate-pulse" : isOnline ? "bg-slate-600" : "bg-orange-400")} />
+            {!isOnline ? "Sin conexion" : mode === "connected" ? "Conectado" : mode === "connecting" ? "Conectando..." : "Local"}
           </span>
           {mode === "connected" && (
             <span className="text-slate-600 hidden sm:inline">{currentProvider?.displayName || selectedProvider}</span>

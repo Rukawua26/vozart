@@ -27,7 +27,7 @@
 ## Infraestructura
 
 - No hay autenticacion de usuarios finales.
-- El service worker sigue siendo basico; no ofrece offline total para assets dinamicos ni providers IA.
+- El canvas y los proyectos locales siguen disponibles sin red. Los providers IA requieren el servidor VozArt; los providers cloud tambien requieren Internet y Ollama requiere su runtime local.
 - La colaboracion en tiempo real usa salas WebSocket basicas sin historial de cambios ni conflictos.
 - El eye tracking usa FaceLandmarker de MediaPipe y estimacion de iris; no es clinico ni alta precision.
 - El hand tracking usa MediaPipe HandLandmarker; requiere buena iluminacion y camara frontal.
