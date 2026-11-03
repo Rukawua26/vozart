@@ -283,14 +283,22 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({ onSendCommand, comma
           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Proveedor IA</span>
         </div>
         <select
+          aria-label="Proveedor IA"
           value={selectedProvider}
           onChange={(e) => onProviderChange(e.target.value)}
+          disabled={providers.length === 0}
           className="w-full bg-slate-800 text-white text-xs rounded-lg px-3 py-2 border border-slate-700 outline-none focus:border-blue-500/50"
         >
+          {providers.length === 0 && <option value={selectedProvider}>Sin proveedores disponibles</option>}
           {providers.map(p => (
             <option key={p.name} value={p.name}>{p.displayName}</option>
           ))}
         </select>
+        <p className="mt-2 text-[10px] text-slate-500" aria-live="polite">
+          {providers.length === 0
+            ? 'Conecta el servidor VozArt para usar comandos IA.'
+            : `Modelos: ${providers.find(provider => provider.name === selectedProvider)?.models.join(', ') || 'informacion no disponible'}`}
+        </p>
       </div>
 
       <div className="flex flex-col items-center gap-4 py-6 bg-slate-950/50 rounded-2xl border border-slate-800 mb-6">

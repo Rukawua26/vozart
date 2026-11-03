@@ -7,6 +7,7 @@ import { streamManager } from './services/AIStreamManager';
 import { getProfilePreset } from './services/profilePresets';
 import type { AccessibilitySettings, AppCommand, Layer, ProjectSnapshot, WorkProfile } from './types';
 import { createProjectId, makeLayersForProfile, downloadJSON, parseStoredProjects, PROJECTS_STORAGE_KEY } from './lib/project';
+import { resolveProviderSelection } from './lib/provider-selection';
 
 const CanvasInclusivo = lazy(() => import('./components/CanvasInclusivo').then(m => ({ default: m.CanvasInclusivo })));
 const VoiceControl = lazy(() => import('./components/VoiceControl').then(m => ({ default: m.VoiceControl })));
@@ -25,6 +26,7 @@ const MAX_COMMANDS = 50;
 const MAX_RECONNECTS = 6;
 const ACTIVE_PROJECT_STORAGE_KEY = 'vozart-active-project';
 const COLLABORATOR_STORAGE_KEY = 'vozart-collaborator-name';
+const PROVIDER_STORAGE_KEY = 'vozart-ai-provider';
 const APP_ACCESS_TOKEN = (import.meta as any).env?.VITE_APP_ACCESS_TOKEN || '';
 const SERVER_URL = ((import.meta as any).env?.VITE_SERVER_URL || '').replace(/\/$/, '');
 const IS_CAPACITOR = window.location.protocol === 'capacitor:' || window.location.protocol === 'file:';
@@ -40,7 +42,7 @@ export default function App() {
   const [commands, setCommands] = useState<AppCommand[]>([]);
   const [mode, setMode] = useState<ServerMode>("connecting");
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState('gemini');
+  const [selectedProvider, setSelectedProvider] = useState(() => localStorage.getItem(PROVIDER_STORAGE_KEY) || 'gemini');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [accessibility, setAccessibility] = useState<AccessibilitySettings>(DEFAULT_ACCESSIBILITY);
@@ -101,6 +103,10 @@ export default function App() {
       if (!userParam && activeProject.collaboratorName) setCollaboratorName(activeProject.collaboratorName);
     }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(PROVIDER_STORAGE_KEY, selectedProvider);
+  }, [selectedProvider]);
   useEffect(() => {
     if (isProcessing) {
       if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
@@ -186,7 +192,9 @@ export default function App() {
       fetch(providersUrl, headers).then(r => r.ok ? r.json() : Promise.reject(new Error('providers http ' + r.status))),
       fetch(healthUrl, headers).then(r => r.ok ? r.json() : Promise.reject(new Error('health http ' + r.status))),
     ]).then(([provData, healthData]) => {
-      setProviders(provData);
+      const availableProviders = Array.isArray(provData) ? provData : [];
+      setProviders(availableProviders);
+      setSelectedProvider(current => resolveProviderSelection(availableProviders, current));
       contextManager.startSession(activeLayerIdRef.current);
       const welcome = `Servidor OK v${healthData.version}. ${healthData.providers?.length ?? 0} proveedores activos.`;
       addCommand({ type: 'ERROR', data: { action: 'ERROR', message: welcome } });
